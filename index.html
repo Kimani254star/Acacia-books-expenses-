@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Acacia Expense — Operational Costs</title>
+<meta name="description" content="Acacia Expense — operational costs, recurring costs, cost centres, approvals, receipts and reports (live-synced with Acacia ERP)." />
+<script>
+  // Shared Supabase project (same as app 1701)
+  window.__SUPA_URL__ = 'https://swgyefbzplelxrjcovef.supabase.co';
+  window.__SUPA_KEY__ = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3Z3llZmJ6cGxlbHhyamNvdmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDU4MzIsImV4cCI6MjA5NzA4MTgzMn0.U2zDNqRfdEgTgldBd7CcEhfsmGXvYZ14yh-4yYC2HlY';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { acacia: {50:'#eef7ff',100:'#d9ecff',200:'#b6d9ff',300:'#83bfff',400:'#4a9dff',500:'#1f7aef',600:'#0f5fd1',700:'#0d4ca8',800:'#103f85',900:'#12376b'}},
+    fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
+  }}}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html,body{height:100%}body{font-family:'Cambria',system-ui,sans-serif;background:#f4f6fa}
+  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#c7d0dc;border-radius:6px}
+  .nav-btn.active{background:#0d4ca8;color:#fff}
+  .fade-in{animation:fadeIn .2s ease-out}@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body class="text-slate-800">
+
+<div id="authScreen" class="hidden fixed inset-0 z-40 bg-gradient-to-br from-acacia-800 via-acacia-700 to-acacia-900 flex items-center justify-center p-4">
+  <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div class="p-6 text-center border-b border-slate-100">
+      <div class="w-14 h-14 mx-auto rounded-xl bg-gradient-to-br from-acacia-500 to-acacia-700 flex items-center justify-center text-white font-bold text-2xl">A</div>
+      <h1 class="mt-3 text-xl font-bold text-slate-800">Acacia Expense</h1>
+      <p class="text-sm text-slate-500">Sign in or create your workspace account.</p>
+    </div>
+    <div class="flex border-b border-slate-100">
+      <button id="tabSignIn" onclick="switchAuthTab('signin')" class="flex-1 py-3 text-sm font-semibold text-acacia-700 border-b-2 border-acacia-600">Sign In</button>
+      <button id="tabSignUp" onclick="switchAuthTab('signup')" class="flex-1 py-3 text-sm font-semibold text-slate-500 border-b-2 border-transparent">Create Account</button>
+    </div>
+    <form id="signinForm" onsubmit="doSignIn(event)" class="p-6 space-y-3">
+      <div><label class="text-xs font-semibold text-slate-600">Company name</label>
+        <input id="siCompany" type="text" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="Exactly as used on Acacia ERP"/></div>
+      <div><label class="text-xs font-semibold text-slate-600">Email</label>
+        <input id="siEmail" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="you@example.com"/></div>
+      <div><label class="text-xs font-semibold text-slate-600">Password</label>
+        <input id="siPass" type="password" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
+      <button type="submit" class="w-full h-10 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white font-semibold">Sign In</button>
+      <p id="siError" class="text-xs text-red-500 hidden"></p>
+      <p class="text-[11px] text-slate-500 text-center">Use the same <b>Company name</b> and <b>Email</b> you used on Acacia ERP to pull that workspace's data.</p>
+    </form>
+    <form id="signupForm" onsubmit="doSignUp(event)" class="hidden p-6 space-y-3">
+      <div><label class="text-xs font-semibold text-slate-600">Company name</label>
+        <input id="suCompany" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="text-xs font-semibold text-slate-600">First name</label><input id="suFirst" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
+        <div><label class="text-xs font-semibold text-slate-600">Last name</label><input id="suLast" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
+      </div>
+      <div><label class="text-xs font-semibold text-slate-600">Email</label>
+        <input id="suEmail" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="you@example.com"/></div>
+      <div><label class="text-xs font-semibold text-slate-600">Password</label><input id="suPass" type="password" required minlength="6" class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
+      <label class="flex items-start gap-2 text-xs text-slate-500"><input type="checkbox" required class="mt-0.5"/>I agree to the Acacia Terms & Privacy Policy.</label>
+      <button type="submit" class="w-full h-10 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white font-semibold">Create Account</button>
+      <p id="suError" class="text-xs text-red-500 hidden"></p>
+      <p class="text-[11px] text-slate-500 text-center">Creating an account here also registers it in Acacia ERP for the given company.</p>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="hidden flex-col h-screen">
+  <header class="flex items-center justify-between px-4 h-14 bg-white border-b border-slate-200 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-acacia-500 to-acacia-700 flex items-center justify-center text-white font-bold">💰</div>
+      <div class="leading-tight"><div class="font-bold text-acacia-800">Acacia Expense</div>
+      <div class="text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1">Operational Costs · <span id="syncDot" class="inline-block w-2 h-2 rounded-full bg-slate-300"></span> <span id="syncStatus">idle</span></div></div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="openMail()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">✉️ Compose</button>
+      <button onclick="pullAll()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">↻ Sync</button>
+      <a href="./app_1701-1_3.html" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">← Back to Acacia</a>
+      <div class="relative">
+        <button onclick="toggleApps()" class="p-2 rounded-lg hover:bg-slate-100"><svg class="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="19" cy="5" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="19" r="1.5"/><circle cx="12" cy="19" r="1.5"/><circle cx="19" cy="19" r="1.5"/></svg></button>
+        <div id="appsMenu" class="hidden absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50 text-sm">
+          <a href="./app_1701-1_3.html" class="block px-3 py-2 hover:bg-slate-50">🏠 Acacia ERP (Main)</a>
+          <a href="./acacia-mail_4.html" class="block px-3 py-2 hover:bg-slate-50">✉️ Acacia Mail</a>
+          <a href="./acacia-inventory.html" class="block px-3 py-2 hover:bg-slate-50">📦 Inventory</a>
+          <a href="./acacia-payroll.html" class="block px-3 py-2 hover:bg-slate-50">💵 Payroll</a>
+          <a href="./acacia-expense.html" class="block px-3 py-2 hover:bg-slate-50 font-semibold text-acacia-700">💰 Expense</a>
+        </div>
+      </div>
+      <div id="userAvatar" class="w-9 h-9 rounded-full bg-acacia-700 text-white flex items-center justify-center text-xs font-bold"></div>
+      <button onclick="signOut()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">Sign out</button>
+    </div>
+  </header>
+  <div class="flex flex-1 overflow-hidden">
+    <aside class="w-60 bg-white border-r border-slate-200 p-3 overflow-y-auto shrink-0">
+      <div class="text-[10px] font-bold uppercase text-slate-400 px-2 mb-2">💰 Operational Costs</div>
+      <nav id="navList" class="space-y-1 text-sm"></nav>
+    </aside>
+    <main class="flex-1 overflow-auto p-6"><div id="view" class="fade-in"></div></main>
+  </div>
+</div>
+
+
+<div id="mailModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+  <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-acacia-800 text-white">
+      <div class="font-semibold text-sm">New message · Acacia Mail</div>
+      <button onclick="closeMail()" class="text-white/80 hover:text-white text-lg">✕</button>
+    </div>
+    <form onsubmit="sendMailFromApp(event)" class="p-5 space-y-3">
+      <div><label class="text-xs font-semibold text-slate-600">To</label>
+        <input id="mmTo" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 text-sm" placeholder="recipient@example.com"/></div>
+      <div><label class="text-xs font-semibold text-slate-600">Subject</label>
+        <input id="mmSubject" type="text" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 text-sm"/></div>
+      <div><label class="text-xs font-semibold text-slate-600">Message</label>
+        <textarea id="mmBody" rows="6" required class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm"></textarea></div>
+      <p id="mmStatus" class="text-xs text-slate-500"></p>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeMail()" class="px-4 h-9 rounded-lg border border-slate-200 text-sm">Cancel</button>
+        <button type="submit" class="px-5 h-9 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white text-sm font-semibold">Send</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ============ Shared auth linked to Acacia ERP (app 1707) ============ */
+const SESSION_KEY='acacia_session';
+function currentUser(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch{return null}}
+function initials(n){return (n||'?').split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase()}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]))}
+function toCompanyId(name){ return 'comp_' + String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'_'); }
+function switchAuthTab(t){const s=t==='signin';
+  tabSignIn.classList.toggle('text-acacia-700',s);tabSignIn.classList.toggle('border-acacia-600',s);
+  tabSignIn.classList.toggle('text-slate-500',!s);tabSignIn.classList.toggle('border-transparent',!s);
+  tabSignUp.classList.toggle('text-acacia-700',!s);tabSignUp.classList.toggle('border-acacia-600',!s);
+  tabSignUp.classList.toggle('text-slate-500',s);tabSignUp.classList.toggle('border-transparent',s);
+  signinForm.classList.toggle('hidden',!s);signupForm.classList.toggle('hidden',s);}
+
+/* Supabase client (shared project with Acacia ERP) */
+const sb = window.supabase.createClient(window.__SUPA_URL__, window.__SUPA_KEY__);
+
+/* Pull the shared users list from app_state (app 1707 stores it under 'users') */
+async function fetchUsers(){
+  try{
+    const { data } = await sb.from('app_state').select('value').eq('key','users').maybeSingle();
+    if(Array.isArray(data?.value)) return data.value;
+  }catch(e){ console.warn('users fetch failed',e); }
+  try{ return JSON.parse(localStorage.getItem('users')||'[]'); }catch{ return []; }
+}
+async function saveUsersCloud(users){
+  localStorage.setItem('users', JSON.stringify(users));
+  try{
+    await sb.from('app_state').upsert({ key:'users', value:users, updated_at:new Date().toISOString() }, { onConflict:'key' });
+  }catch(e){ console.warn('users save failed',e); }
+}
+
+async function doSignIn(e){
+  e.preventDefault();
+  siError.classList.add('hidden');
+  const company=(siCompany.value||'').trim();
+  const email=(siEmail.value||'').trim().toLowerCase();
+  const pass=siPass.value;
+  if(!company||!email){siError.textContent='Company name and email are required.';siError.classList.remove('hidden');return}
+  const users=await fetchUsers();
+  const compId=toCompanyId(company);
+  const match=users.find(u=>{
+    const uEmail=(u.email||'').toLowerCase();
+    const uCompId=u.companyId||toCompanyId(u.companyName||'');
+    return uEmail===email && uCompId===compId;
+  });
+  if(!match){siError.textContent='No matching Acacia ERP account for that company + email.';siError.classList.remove('hidden');return}
+  if(match.password && match.password!==pass){siError.textContent='Incorrect password.';siError.classList.remove('hidden');return}
+  const session={ email:match.email, name:match.fullName||match.username||email, companyId:compId, companyName:match.companyName||company };
+  localStorage.setItem(SESSION_KEY,JSON.stringify(session));
+  boot();
+}
+
+async function doSignUp(e){
+  e.preventDefault();
+  suError.classList.add('hidden');
+  const company=(suCompany.value||'').trim();
+  const email=(suEmail.value||'').trim().toLowerCase();
+  const pass=suPass.value;
+  if(!company||!email){suError.textContent='Company name and email are required.';suError.classList.remove('hidden');return}
+  const users=await fetchUsers();
+  const compId=toCompanyId(company);
+  if(users.some(u=>(u.email||'').toLowerCase()===email)){
+    suError.textContent='Email already registered — use Sign In instead.';suError.classList.remove('hidden');return;
+  }
+  const rec={
+    username:email.split('@')[0],
+    email, password:pass,
+    fullName:((suFirst.value||'')+' '+(suLast.value||'')).trim()||email,
+    role:'admin', companyId:compId, companyName:company,
+    registered:new Date().toISOString(), status:'active', modules:[]
+  };
+  users.push(rec);
+  await saveUsersCloud(users);
+  localStorage.setItem(SESSION_KEY,JSON.stringify({ email:rec.email, name:rec.fullName, companyId:compId, companyName:company }));
+  boot();
+}
+
+function signOut(){localStorage.removeItem(SESSION_KEY);location.reload()}
+function toggleApps(){appsMenu.classList.toggle('hidden')}
+document.addEventListener('click',e=>{if(!e.target.closest('#appsMenu')&&!e.target.closest('button[onclick*=toggleApps]')) appsMenu?.classList.add('hidden')});
+
+/* ============ Company-scoped keys (matches app 1707's getCompanyKey) ============ */
+function currentCompanyId(){ const u=currentUser(); return u?.companyId || 'default_company'; }
+function scopedKey(k){ return k + '_' + currentCompanyId(); }
+
+/* Operational-cost submodules mapped to app 1701 keys */
+const MODULES = [
+  { id:'expenses',   label:'Operational Costs', key:'operationalCosts'   },
+  { id:'recurring',  label:'Recurring Costs',   key:'recurringPayments'  },
+  { id:'categories', label:'Cost Categories',   key:'chartOfAccounts'    },
+  { id:'centres',    label:'Cost Centres',      key:'projects'           },
+  { id:'approvals',  label:'Approvals',         key:'manualTransactions' },
+  { id:'receipts',   label:'Receipts',          key:'projectExpenses'    },
+  { id:'reimburse',  label:'Reimbursements',    key:'payments'           },
+  { id:'reports',    label:'Cost Reports',      key:'transactions'       },
+];
+
+const store = {};                 // { moduleId: [rows] }
+let active = MODULES[0].id;
+
+function setSync(status, tone){
+  syncStatus.textContent = status;
+  const dot = syncDot; dot.className = 'inline-block w-2 h-2 rounded-full ' +
+    ({ok:'bg-emerald-500',busy:'bg-amber-400 animate-pulse',err:'bg-red-500',idle:'bg-slate-300'}[tone]||'bg-slate-300');
+}
+
+async function pullOne(m){
+  const scoped=scopedKey(m.key);
+  let { data, error } = await sb.from('app_state').select('value').eq('key', scoped).maybeSingle();
+  if(error) throw error;
+  if(!data){
+    // Fallback: legacy unscoped key (older ERP records)
+    const r = await sb.from('app_state').select('value').eq('key', m.key).maybeSingle();
+    data = r.data;
+  }
+  store[m.id] = Array.isArray(data?.value) ? data.value : [];
+}
+async function pullAll(){
+  setSync('syncing…','busy');
+  try{
+    await Promise.all(MODULES.map(pullOne));
+    setSync('synced · '+(currentUser()?.companyName||'workspace'),'ok');
+    renderView();
+  }catch(e){ console.warn(e); setSync('sync error','err'); }
+}
+async function pushOne(m){
+  setSync('saving…','busy');
+  const { error } = await sb.from('app_state').upsert(
+    { key: scopedKey(m.key), value: store[m.id]||[], updated_at: new Date().toISOString() },
+    { onConflict: 'key' }
+  );
+  if(error){ setSync('save error','err'); alert('Save failed: '+error.message); return false }
+  setSync('synced · '+(currentUser()?.companyName||'workspace'),'ok'); return true;
+}
+
+/* Render */
+function renderNav(){
+  navList.innerHTML = MODULES.map(m=>`<button onclick="go('${m.id}')" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 ${m.id===active?'active':''}">${m.label}</button>`).join('');
+}
+function go(id){ active=id; renderNav(); renderView(); }
+
+function collectColumns(rows){
+  const seen=new Set(); rows.forEach(r=>r && typeof r==='object' && Object.keys(r).forEach(k=>seen.add(k)));
+  return Array.from(seen).slice(0,10);
+}
+function cellText(v){
+  if(v==null) return '';
+  if(typeof v==='object') return JSON.stringify(v);
+  return String(v);
+}
+function renderView(){
+  const m = MODULES.find(x=>x.id===active);
+  const rows = store[m.id] || [];
+  const cols = collectColumns(rows);
+  view.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <div><h2 class="text-2xl font-bold text-slate-800">${m.label}</h2>
+        <p class="text-sm text-slate-500">${rows.length} record${rows.length===1?'':'s'} · live from Acacia ERP · <code class="text-[11px] bg-slate-100 px-1 rounded">app_state.${m.key}</code></p></div>
+      <div class="flex gap-2">
+        <button onclick="exportCsv()" class="px-3 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Export CSV</button>
+        <button onclick="addRow()" class="px-4 py-2 text-sm bg-acacia-600 hover:bg-acacia-700 text-white rounded-lg font-semibold">+ New</button>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden"><div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
+          <tr>${cols.length?cols.map(c=>`<th class="px-3 py-2">${escapeHtml(c)}</th>`).join(''):'<th class="px-3 py-2">Value</th>'}<th class="px-3 py-2"></th></tr>
+        </thead>
+        <tbody>
+          ${rows.length===0?`<tr><td colspan="${(cols.length||1)+1}" class="text-center text-slate-400 py-10">No ${m.label.toLowerCase()} records synced yet. Create records in Acacia ERP, or click <b>+ New</b> here.</td></tr>`:
+          rows.map((r,i)=>`<tr class="border-t border-slate-100 hover:bg-slate-50 align-top">
+            ${cols.length?cols.map(c=>`<td class="px-3 py-2 max-w-xs truncate">${escapeHtml(cellText(r?.[c]))}</td>`).join(''):`<td class="px-3 py-2">${escapeHtml(cellText(r))}</td>`}
+            <td class="px-3 py-2 text-right"><button onclick="delRow(${i})" class="text-red-500 hover:underline text-xs">Delete</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div></div>`;
+}
+
+async function addRow(){
+  const m = MODULES.find(x=>x.id===active);
+  const rows = store[m.id] || [];
+  const template = rows.find(r=>r && typeof r==='object');
+  const keys = template ? Object.keys(template) : (prompt('New record — comma-separated field names:','name,quantity,price')||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!keys.length) return;
+  const rec = {};
+  for(const k of keys){ const v = prompt(k+':'); if(v===null) return; rec[k]=v; }
+  store[m.id] = [...rows, rec];
+  if(await pushOne(m)) renderView(); else await pullOne(m).then(renderView);
+}
+async function delRow(i){
+  if(!confirm('Delete this record from Acacia ERP?')) return;
+  const m = MODULES.find(x=>x.id===active);
+  store[m.id].splice(i,1);
+  if(await pushOne(m)) renderView(); else await pullOne(m).then(renderView);
+}
+function exportCsv(){
+  const m=MODULES.find(x=>x.id===active); const rows=store[m.id]||[]; const cols=collectColumns(rows);
+  const csv=[cols.join(','),...rows.map(r=>cols.map(c=>JSON.stringify(cellText(r?.[c]))).join(','))].join('\n');
+  const a=document.createElement('a');a.href='data:text/csv,'+encodeURIComponent(csv);a.download=m.key+'.csv';a.click();
+}
+
+
+
+/* ============ Acacia Mail bridge ============ */
+const MAIL_DATA_PREFIX = 'acacia_data_';
+function openMail(){ mmStatus.textContent=''; mmTo.value=''; mmSubject.value=''; mmBody.value=''; mailModal.classList.remove('hidden'); }
+function closeMail(){ mailModal.classList.add('hidden'); }
+function loadMailbox(email){
+  try{ return JSON.parse(localStorage.getItem(MAIL_DATA_PREFIX+email)) || {mails:[],events:[],aiChat:[]}; }
+  catch{ return {mails:[],events:[],aiChat:[]}; }
+}
+function saveMailbox(email, box){
+  localStorage.setItem(MAIL_DATA_PREFIX+email, JSON.stringify(box));
+  // Mirror to Supabase so Acacia Mail can pull it on other devices
+  try{ sb.from('app_state').upsert({ key: MAIL_DATA_PREFIX+email, value: box, updated_at:new Date().toISOString() }, { onConflict:'key' }); }catch(e){}
+}
+async function sendMailFromApp(e){
+  e.preventDefault();
+  const u = currentUser();
+  if(!u){ mmStatus.textContent='Sign in first.'; return; }
+  const to = mmTo.value.trim().toLowerCase();
+  const subject = mmSubject.value.trim();
+  const bodyText = mmBody.value.trim();
+  if(!to||!subject||!bodyText) return;
+  mmStatus.textContent = 'Verifying recipient…';
+  const users = await fetchUsers();
+  const recipient = users.find(x=>(x.email||'').toLowerCase()===to);
+  if(!recipient){
+    mmStatus.textContent = '❌ No Acacia account uses that email. The message was not sent.';
+    return;
+  }
+  const bodyHtml = escapeHtml(bodyText).replace(/\n/g,'<br>');
+  const now = Date.now();
+  const mailId = 'm'+now;
+
+  // 1) Deliver to recipient's inbox (same key Acacia Mail reads: acacia_data_<email>.mails)
+  const inbox = loadMailbox(recipient.email);
+  inbox.mails = inbox.mails || [];
+  inbox.mails.unshift({
+    id: mailId,
+    from: u.name || u.email,
+    email: u.email,
+    to: recipient.email,
+    subject, preview: bodyText.slice(0,90), body: bodyHtml,
+    time: now, read: false, starred: false, folder: 'inbox'
+  });
+  saveMailbox(recipient.email, inbox);
+
+  // 2) Save copy in sender's Sent folder
+  const sent = loadMailbox(u.email);
+  sent.mails = sent.mails || [];
+  sent.mails.unshift({
+    id: mailId+'_s',
+    from: u.name || u.email,
+    email: recipient.email,
+    to: recipient.email,
+    subject, preview: bodyText.slice(0,90), body: bodyHtml,
+    time: now, read: true, starred: false, folder: 'sent'
+  });
+  saveMailbox(u.email, sent);
+
+  mmStatus.textContent = '✅ Sent to '+recipient.email+' — will appear in their Acacia Mail inbox.';
+  setTimeout(closeMail, 1200);
+}
+
+function boot(){
+  const u=currentUser();
+  if(!u){authScreen.classList.remove('hidden');app.classList.add('hidden');app.classList.remove('flex');return}
+  authScreen.classList.add('hidden');app.classList.remove('hidden');app.classList.add('flex');
+  userAvatar.textContent=initials(u.companyName||u.name||u.email);userAvatar.title=(u.companyName||'')+' · '+(u.email||'');
+  renderNav(); renderView(); pullAll();
+}
+boot();
+</script>
+</body>
+</html>
