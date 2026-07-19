@@ -233,15 +233,20 @@ function setSync(status, tone){
 }
 
 async function pullOne(m){
-  const scoped=scopedKey(m.key);
-  let { data, error } = await sb.from('app_state').select('value').eq('key', scoped).maybeSingle();
-  if(error) throw error;
-  if(!data){
-    // Fallback: legacy unscoped key (older ERP records)
-    const r = await sb.from('app_state').select('value').eq('key', m.key).maybeSingle();
-    data = r.data;
+  try {
+    const scoped=scopedKey(m.key);
+    let { data, error } = await sb.from('app_state').select('value').eq('key', scoped).maybeSingle();
+    if(error) throw error;
+    if(!data){
+      // Fallback: legacy unscoped key (older ERP records)
+      const r = await sb.from('app_state').select('value').eq('key', m.key).maybeSingle();
+      data = r.data;
+    }
+    store[m.id] = Array.isArray(data?.value) ? data.value : [];
+  } catch(e) {
+    console.warn(`Failed pulling key ${m.key}:`, e);
+    store[m.id] = []; // Fallback gracefully instead of throwing sync status error
   }
-  store[m.id] = Array.isArray(data?.value) ? data.value : [];
 }
 async function pullAll(){
   setSync('syncing…','busy');
