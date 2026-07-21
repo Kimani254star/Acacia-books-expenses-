@@ -71,9 +71,21 @@
 <div id="app" class="hidden flex-col h-screen">
   <header class="flex items-center justify-between px-4 h-14 bg-white border-b border-slate-200 shrink-0">
     <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-acacia-500 to-acacia-700 flex items-center justify-center text-white font-bold">💰</div>
-      <div class="leading-tight"><div class="font-bold text-acacia-800">Acacia Expense</div>
-      <div class="text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1">Operational Costs · <span id="syncDot" class="inline-block w-2 h-2 rounded-full bg-slate-300"></span> <span id="syncStatus">idle</span></div></div>
+    
+      <div class="flex items-center gap-2 pr-3 border-r border-slate-200">
+        <img src="acaciabooks-logo.png" alt="Logo" class="h-8 w-auto object-contain" />
+        <div class="font-bold text-[10px] text-slate-700 tracking-wide uppercase leading-tight">
+          Spear Tech<br>dvlp
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-acacia-500 to-acacia-700 flex items-center justify-center text-white font-bold">💰</div>
+        <div class="leading-tight">
+          <div class="font-bold text-acacia-800">Acacia Expense</div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1">Operational Costs · <span id="syncDot" class="inline-block w-2 h-2 rounded-full bg-slate-300"></span> <span id="syncStatus">idle</span></div>
+        </div>
+      </div>
     </div>
     <div class="flex items-center gap-2">
       <button onclick="openMail()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">✉️ Compose</button>
@@ -93,15 +105,144 @@
       <button onclick="signOut()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">Sign out</button>
     </div>
   </header>
-  <div class="flex flex-1 overflow-hidden">
+
+  <div class="flex flex-1 overflow-hidden relative">
     <aside class="w-60 bg-white border-r border-slate-200 p-3 overflow-y-auto shrink-0">
       <div class="text-[10px] font-bold uppercase text-slate-400 px-2 mb-2">💰 Operational Costs</div>
       <nav id="navList" class="space-y-1 text-sm"></nav>
     </aside>
+
     <main class="flex-1 overflow-auto p-6"><div id="view" class="fade-in"></div></main>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside id="rightSidebar" class="hidden w-12 bg-white border-l border-slate-200 p-2 overflow-y-auto shrink-0 flex flex-col items-center space-y-4">
+      <button onclick="toggleAcaciaNotebook()" title="Acacia Notebook" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📔</button>
+      <button onclick="toggleWebinarPanel()" title="Webinars" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🎥</button>
+      <button onclick="toggleCommPanel()" title="Communication" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">💬</button>
+      <button onclick="toggleSupportPopup()" title="Support Hub" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🎧</button>
+      <button onclick="toggleOrgDetails()" title="Organization Details" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🏢</button>
+      <div class="w-6 h-px bg-slate-200 my-1"></div>
+      <button onclick="openGDocs()" title="Google Docs" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📄</button>
+      <button onclick="openGSheets()" title="Google Sheets" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📊</button>
+      <button onclick="openGPhotos()" title="Google Photos" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🖼️</button>
+      <button onclick="openGCalendar()" title="Google Calendar" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📅</button>
+    </aside>
+  </div>
+
+  <!-- PANELS & POPUPS -->
+  <div id="acaciaNotebookPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
+    <div class="p-3 bg-purple-600 text-white font-bold flex justify-between items-center shrink-0">
+      <span>📔 Acacia Notebook</span>
+      <button onclick="toggleAcaciaNotebook()" class="hover:text-purple-200 font-bold text-sm">✕</button>
+    </div>
+    <div class="p-2 bg-slate-50 border-b border-gray-200 flex gap-1 shrink-0">
+      <button onclick="setNoteCategory('Work')" class="px-2 py-1 bg-purple-100 text-purple-700 rounded-md font-medium hover:bg-purple-200">Work</button>
+      <button onclick="setNoteCategory('Personal')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded-md font-medium hover:bg-blue-200">Personal</button>
+      <button onclick="setNoteCategory('Ideas')" class="px-2 py-1 bg-amber-100 text-amber-700 rounded-md font-medium hover:bg-amber-200">Ideas</button>
+    </div>
+    <div id="acaciaNoteList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
+    <div class="p-2 bg-white border-t border-gray-100 flex gap-1 shrink-0">
+      <input id="acaciaNoteText" type="text" placeholder="Write operational note..." class="flex-1 h-8 px-2 border border-gray-300 rounded-md outline-none text-xs" />
+      <button onclick="saveAcaciaNote()" class="px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-md font-bold text-xs">Save</button>
+      <button onclick="clearAcaciaNotes()" class="px-2 border border-gray-200 text-gray-500 rounded-md hover:bg-gray-50 text-xs">Clear</button>
+    </div>
+  </div>
+
+  <div id="webinarPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
+    <div class="p-3 bg-rose-600 text-white font-bold flex justify-between items-center shrink-0">
+      <span>🎥 Webinar Scheduler</span>
+      <button onclick="toggleWebinarPanel()" class="hover:text-rose-200 font-bold text-sm">✕</button>
+    </div>
+    <div class="p-3 border-b border-gray-200 bg-slate-50 space-y-2 shrink-0">
+      <input id="webinarTitle" type="text" placeholder="Webinar Session Title" class="w-full h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
+      <div class="grid grid-cols-2 gap-1.5">
+        <input id="webinarDate" type="datetime-local" class="h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
+        <input id="webinarLink" type="text" placeholder="Meeting URL Link" class="h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
+      </div>
+      <div class="flex gap-1.5">
+        <button onclick="addWebinar()" class="flex-1 h-8 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-md text-xs">Add Session</button>
+        <button onclick="clearWebinars()" class="px-2 border border-gray-200 text-gray-500 rounded-md hover:bg-gray-50 text-xs">Clear</button>
+      </div>
+    </div>
+    <div id="webinarList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
+  </div>
+
+  <div id="commPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
+    <div class="p-3 bg-blue-700 text-white font-bold flex justify-between items-center shrink-0">
+      <span>💬 Dispatch Terminal</span>
+      <button onclick="toggleCommPanel()" class="hover:text-blue-200 font-bold text-sm">✕</button>
+    </div>
+    <div class="p-3 border-b border-gray-200 bg-slate-50 space-y-2 shrink-0">
+      <input id="commUser" type="text" placeholder="Recipient user identifier" class="w-full h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
+      <textarea id="commMessage" placeholder="Type internal memo data lines..." class="w-full h-14 p-2 border border-gray-300 rounded-md outline-none text-xs resize-none bg-white"></textarea>
+      <div class="flex gap-1 justify-between items-center">
+        <div class="flex gap-1">
+          <button onclick="insertTemplate('Invoice Link')" class="px-1.5 py-0.5 bg-gray-200 rounded text-[10px] text-gray-600 hover:bg-gray-300">Invoice template</button>
+          <button onclick="insertTemplate('Report Update')" class="px-1.5 py-0.5 bg-gray-200 rounded text-[10px] text-gray-600 hover:bg-gray-300">Report update</button>
+        </div>
+        <button onclick="sendPrivateMessage()" class="px-3 h-7 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-md text-xs">Send</button>
+      </div>
+      <button onclick="sharePrivateReport()" class="w-full h-7 border border-blue-200 text-blue-700 hover:bg-blue-50 font-medium rounded-md text-xs">Share Cryptographic Ledger Report Context</button>
+    </div>
+    <div id="commLog" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
+  </div>
+
+  <div id="supportPopup" class="hidden fixed bottom-20 right-4 w-96 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
+    <div class="bg-blue-900 text-white px-3 py-2 rounded-t-lg flex justify-between items-center">
+      <div>
+        <h3 class="font-bold">🎧 Acacia AI Support</h3>
+        <small class="text-blue-100">Ask me anything about Acacia Sales Hub</small>
+      </div>
+      <button onclick="toggleSupportPopup()" class="text-white text-xl hover:text-gray-200">✕</button>
+    </div>
+
+    <div id="supportMessages" class="h-80 overflow-y-auto p-3 bg-white text-black text-sm space-y-2">
+      <div class="bg-white border border-gray-300 rounded-lg shadow-sm p-3">
+        <h2 class="text-base font-bold text-blue-900 mb-1">🎧Welcome to Acacia AI Support</h2>
+        <p class="text-gray-700 text-xs mb-3">I'm your intelligent Acacia Sales Hub assistant. I can guide you through managing ledger workflows, tracking sales pipelines, and resolving module questions.</p>
+        
+        <p class="font-semibold text-gray-800 text-xs mb-1">📊 Covered Sales Modules:</p>
+        <div class="grid grid-cols-2 gap-1 text-xs mb-3 text-gray-700">
+          <div>👥 Customers</div>
+          <div>📄 Invoices</div>
+          <div>✉️ Quotes</div>
+          <div>🛒 Orders</div>
+          <div>📦 Bulk Invoicing</div>
+          <div>💳 Credit Notes</div>
+          <div>↩️ Sales Returns</div>
+          <div>💰 Receipts</div>
+          <div>🔁 Recurring Invoices</div>
+          <div>🚚 Delivery</div>
+          <div>📊 Statement</div>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-1">
+          <p class="font-semibold text-blue-900 text-xs mb-1">💬 Try asking:</p>
+          <ul class="list-disc ml-4 space-y-0.5 text-gray-700 text-xs">
+            <li>How do I add a new client to the Customers Registry?</li>
+            <li>How can I execute a Bulk Invoicing run?</li>
+            <li>Where do I log a Credit Note or Sales Return?</li>
+            <li>How do I check a customer's total outstanding Statement?</li>
+            <li>How do I dispatch an active Delivery tracking item?</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-t p-2 bg-gray-50 flex flex-col gap-1">
+      <div class="flex gap-1">
+        <a href="https://wa.me/254717346231" target="_blank" class="flex-1 flex items-center justify-center gap-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs font-semibold transition">📱 WhatsApp</a>
+        <a href="mailto:info@acaciabooks.ke" class="flex-1 flex items-center justify-center gap-1 bg-gray-600 hover:bg-gray-700 text-white py-1.5 rounded text-xs font-semibold transition">📧 Email</a>
+        <button onclick="toggleTawkChat()" class="flex-1 flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded text-xs font-semibold transition">💬 Chat</button>
+      </div>
+    </div>
+
+    <div class="border-t p-2">
+      <input id="supportQuestion" type="text" class="w-full border border-gray-300 rounded px-2 py-1.5 mb-1.5 text-xs text-black placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your sales module question...">
+      <button onclick="sendSupportQuestion()" class="w-full bg-blue-900 hover:bg-blue-800 text-white py-1.5 rounded text-xs font-semibold transition">Send</button>
+    </div>
   </div>
 </div>
-
 
 <div id="mailModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
   <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -206,6 +347,12 @@ async function doSignUp(e){
 function signOut(){localStorage.removeItem(SESSION_KEY);location.reload()}
 function toggleApps(){appsMenu.classList.toggle('hidden')}
 document.addEventListener('click',e=>{if(!e.target.closest('#appsMenu')&&!e.target.closest('button[onclick*=toggleApps]')) appsMenu?.classList.add('hidden')});
+
+/* Sidepanel toggle functions */
+function toggleAcaciaNotebook(){ document.getElementById('acaciaNotebookPanel')?.classList.toggle('hidden'); }
+function toggleWebinarPanel(){ document.getElementById('webinarPanel')?.classList.toggle('hidden'); }
+function toggleCommPanel(){ document.getElementById('commPanel')?.classList.toggle('hidden'); }
+function toggleSupportPopup(){ document.getElementById('supportPopup')?.classList.toggle('hidden'); }
 
 /* ============ Company-scoped keys (matches app 1707's getCompanyKey) ============ */
 function currentCompanyId(){ const u=currentUser(); return u?.companyId || 'default_company'; }
@@ -332,8 +479,6 @@ function exportCsv(){
   const a=document.createElement('a');a.href='data:text/csv,'+encodeURIComponent(csv);a.download=m.key+'.csv';a.click();
 }
 
-
-
 /* ============ Acacia Mail bridge ============ */
 const MAIL_DATA_PREFIX = 'acacia_data_';
 function openMail(){ mmStatus.textContent=''; mmTo.value=''; mmSubject.value=''; mmBody.value=''; mailModal.classList.remove('hidden'); }
@@ -401,6 +546,10 @@ function boot(){
   if(!u){authScreen.classList.remove('hidden');app.classList.add('hidden');app.classList.remove('flex');return}
   authScreen.classList.add('hidden');app.classList.remove('hidden');app.classList.add('flex');
   userAvatar.textContent=initials(u.companyName||u.name||u.email);userAvatar.title=(u.companyName||'')+' · '+(u.email||'');
+  
+  // Display right sidebar once logged in
+  document.getElementById('rightSidebar')?.classList.remove('hidden');
+  
   renderNav(); renderView(); pullAll();
 }
 boot();
