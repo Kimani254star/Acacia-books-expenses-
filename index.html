@@ -1,558 +1,1041 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Acacia Expense — Operational Costs</title>
-<meta name="description" content="Acacia Expense — operational costs, recurring costs, cost centres, approvals, receipts and reports (live-synced with Acacia ERP)." />
-<script>
- 
-  window.__SUPA_URL__ = 'https://skatovltmnsuiolduwfr.supabase.co';
-  window.__SUPA_KEY__ = 'sb_publishable_AS3lfXtQELv5CTl8HX6OPQ_8HtYBfQp';
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = { theme: { extend: {
-    colors: { acacia: {50:'#eef7ff',100:'#d9ecff',200:'#b6d9ff',300:'#83bfff',400:'#4a9dff',500:'#1f7aef',600:'#0f5fd1',700:'#0d4ca8',800:'#103f85',900:'#12376b'}},
-    fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
-  }}}
-</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acacia — Expenses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  html,body{height:100%}body{font-family:'Cambria',system-ui,sans-serif;background:#f4f6fa}
-  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#c7d0dc;border-radius:6px}
-  .nav-btn.active{background:#0d4ca8;color:#fff}
-  .fade-in{animation:fadeIn .2s ease-out}@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+:root{
+  --ink:#1E2A22;
+  --ink-soft:#4A5A4F;
+  --paper:#F2F1EA;
+  --panel:#FFFFFF;
+  --line:#DCD9CC;
+  --line-soft:#EAE7DB;
+  --green:#42603A;
+  --green-deep:#2E4529;
+  --gold:#B4832E;
+  --gold-soft:#F4E7CC;
+  --rust:#A34328;
+  --rust-soft:#F3DCD3;
+  --blue-soft:#DCE4E0;
+  --radius:3px;
+  --sans:'Space Grotesk', sans-serif;
+  --serif:'Fraunces', serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);}
+button{font-family:inherit;}
+input,select,textarea{font-family:inherit;}
+
+/* ---------- Shell ---------- */
+.shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh;}
+
+.sidebar{background:var(--green-deep);color:#EDE9DC;padding:22px 0 20px;display:flex;flex-direction:column;}
+.brand{padding:0 22px 20px;border-bottom:1px solid rgba(237,233,220,.14);margin-bottom:16px;}
+.brand-mark{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.2px;color:#fff;}
+.brand-sub{font-size:12px;color:#C7C2AF;margin-top:2px;}
+
+.nav-group{padding:0 12px;margin-bottom:18px;}
+.nav-label{font-size:11px;color:#9DA894;padding:0 10px 6px;letter-spacing:.03em;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);font-size:13.5px;color:#D9D5C6;text-decoration:none;cursor:pointer;border:1px solid transparent;}
+.nav-item:hover{background:rgba(237,233,220,.06);}
+.nav-item.active{background:#EDE9DC;color:var(--green-deep);font-weight:600;}
+.nav-item.disabled{color:#7C8677;cursor:default;}
+.nav-item.disabled:hover{background:transparent;}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5;flex-shrink:0;}
+
+.main{display:flex;flex-direction:column;min-width:0;}
+.topbar{height:60px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:20;}
+.search-wrap{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:7px 12px;width:320px;}
+.search-wrap input{border:none;background:none;outline:none;font-size:13.5px;width:100%;color:var(--ink);}
+.topbar-right{display:flex;align-items:center;gap:18px;}
+.user-chip{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-soft);}
+.user-badge{width:28px;height:28px;border-radius:50%;background:var(--gold-soft);color:#7A5A17;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:var(--serif);}
+
+.view{display:none;padding:28px 32px 60px;}
+.view.active{display:block;}
+
+.view-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
+.view-title{font-family:var(--serif);font-size:26px;font-weight:600;}
+.view-sub{color:var(--ink-soft);font-size:13px;margin-top:3px;}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:var(--radius);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{border-color:var(--ink-soft);}
+.btn-primary{background:var(--green);border-color:var(--green);color:#fff;font-weight:600;}
+.btn-primary:hover{background:var(--green-deep);}
+.btn-ghost{border-color:transparent;background:transparent;}
+.btn-ghost:hover{background:var(--paper);}
+.btn-danger-text{color:var(--rust);border-color:transparent;}
+.btn-sm{padding:5px 10px;font-size:12px;}
+
+/* ---------- Cards ---------- */
+.card-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;}
+.stat-card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:var(--radius);padding:16px 18px;}
+.stat-card.pending{border-left-color:var(--gold);}
+.stat-card.rust{border-left-color:var(--rust);}
+.stat-card.muted{border-left-color:var(--line);}
+.stat-label{font-size:12px;color:var(--ink-soft);margin-bottom:8px;}
+.stat-value{font-family:var(--serif);font-size:25px;font-weight:600;}
+.stat-value small{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink-soft);}
+
+.dash-row{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;}
+.panel-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+.panel-box h3{margin:0 0 12px;font-size:14px;font-weight:600;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12.5px;}
+.bar-row .name{width:120px;flex-shrink:0;color:var(--ink-soft);}
+.bar-track{flex:1;height:8px;background:var(--paper);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--green);}
+.bar-row .amt{width:88px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;}
+
+.empty-state{border:1px dashed var(--line);border-radius:var(--radius);padding:36px 20px;text-align:center;color:var(--ink-soft);background:var(--panel);}
+.empty-state .title{font-family:var(--serif);font-size:16px;color:var(--ink);margin-bottom:5px;}
+.empty-state .hint{font-size:12.5px;margin-bottom:14px;}
+
+/* ---------- Table ---------- */
+.table-wrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{text-align:left;font-weight:600;color:var(--ink-soft);font-size:11.5px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--paper);letter-spacing:.02em;}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#FAF9F4;cursor:pointer;}
+td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.desc-cell .title{font-weight:600;}
+.desc-cell .sub{font-size:11.5px;color:var(--ink-soft);}
+
+.status-pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.status-draft{background:var(--line-soft);color:var(--ink-soft);}
+.status-submitted{background:var(--blue-soft);color:#33473F;}
+.status-pending{background:var(--gold-soft);color:#7A5A17;}
+.status-approved{background:#DFEADA;color:var(--green-deep);}
+.status-posted{background:#DFEADA;color:var(--green-deep);}
+.status-paid{background:var(--green);color:#fff;}
+.status-rejected{background:var(--rust-soft);color:var(--rust);}
+
+.filter-bar{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap;align-items:center;}
+.filter-bar select, .filter-bar input[type=text]{border:1px solid var(--line);border-radius:var(--radius);padding:6px 10px;font-size:12.5px;background:var(--paper);}
+.filter-bar .grow{flex:1;min-width:180px;}
+
+/* ---------- Side panel ---------- */
+.overlay{position:fixed;inset:0;background:rgba(30,42,34,.28);z-index:40;opacity:0;pointer-events:none;transition:opacity .18s ease;}
+.overlay.show{opacity:1;pointer-events:auto;}
+.side-panel{position:fixed;top:0;right:0;height:100%;width:440px;max-width:92vw;background:var(--panel);z-index:41;box-shadow:-8px 0 28px rgba(0,0,0,.12);transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column;}
+.side-panel.show{transform:translateX(0);}
+.side-head{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;}
+.side-close{border:none;background:none;font-size:20px;cursor:pointer;color:var(--ink-soft);line-height:1;}
+.side-body{padding:20px 22px;overflow-y:auto;flex:1;}
+.side-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:8px;}
+
+.det-amount{font-family:var(--serif);font-size:32px;font-weight:600;margin:2px 0 2px;}
+.det-title{font-size:15px;font-weight:600;margin-top:14px;}
+.det-sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+.det-grid{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;row-gap:12px;font-size:13px;}
+.det-grid .k{color:var(--ink-soft);font-size:11.5px;}
+.det-grid .v{margin-top:2px;}
+.acct-table{width:100%;margin-top:10px;font-size:12.5px;border-collapse:collapse;}
+.acct-table td{padding:6px 0;border-bottom:1px solid var(--line-soft);}
+.acct-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.acct-table tr:last-child td{border-bottom:none;font-weight:600;}
+.section-label{font-size:11px;letter-spacing:.03em;color:var(--ink-soft);margin:22px 0 4px;border-top:1px solid var(--line);padding-top:16px;}
+
+/* ---------- Form ---------- */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-grid .full{grid-column:1/-1;}
+.field label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px;}
+.field input, .field select, .field textarea{width:100%;border:1px solid var(--line);border-radius:var(--radius);padding:9px 11px;font-size:13.5px;background:var(--paper);color:var(--ink);outline:none;}
+.field input:focus, .field select:focus, .field textarea:focus{border-color:var(--green);background:#fff;}
+.field textarea{resize:vertical;min-height:60px;}
+.field.readonly input{background:#EFEDE3;color:var(--ink-soft);}
+.upload-box{border:1px dashed var(--line);border-radius:var(--radius);padding:16px;text-align:center;font-size:12.5px;color:var(--ink-soft);cursor:pointer;background:var(--paper);}
+.upload-box.has-file{color:var(--green-deep);font-weight:600;border-color:var(--green);border-style:solid;background:#F1F5EE;}
+
+/* ---------- Categories ---------- */
+.tree{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:6px 0;}
+.tree-parent{padding:10px 18px;font-weight:600;font-size:13.5px;background:var(--paper);border-bottom:1px solid var(--line);border-top:1px solid var(--line);}
+.tree-parent:first-child{border-top:none;}
+.tree-child{padding:9px 18px 9px 34px;font-size:13px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;color:var(--ink-soft);}
+.tree-child .cnt{font-size:11.5px;}
+.tree-child:last-of-type{border-bottom:1px solid var(--line);}
+
+/* ---------- Reports ---------- */
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.report-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+.report-card h3{margin:0 0 12px;font-size:14px;}
+.report-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px;}
+.report-row:last-child{border-bottom:none;}
+.report-row .amt{font-variant-numeric:tabular-nums;font-weight:600;}
+
+/* ---------- Toast ---------- */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green-deep);color:#fff;padding:11px 20px;border-radius:var(--radius);font-size:13px;opacity:0;pointer-events:none;transition:all .2s ease;z-index:60;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{display:none;}
+  .card-grid{grid-template-columns:1fr 1fr;}
+  .dash-row, .report-grid{grid-template-columns:1fr;}
+  .form-grid{grid-template-columns:1fr;}
+}
 </style>
 </head>
-<body class="text-slate-800">
+<body>
 
-<div id="authScreen" class="hidden fixed inset-0 z-40 bg-gradient-to-br from-acacia-800 via-acacia-700 to-acacia-900 flex items-center justify-center p-4">
-  <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-    <div class="p-6 text-center border-b border-slate-100">
-      <div class="w-14 h-14 mx-auto rounded-xl bg-gradient-to-br from-acacia-500 to-acacia-700 flex items-center justify-center text-white font-bold text-2xl">A</div>
-      <h1 class="mt-3 text-xl font-bold text-slate-800">Acacia Expense</h1>
-      <p class="text-sm text-slate-500">Sign in or create your workspace account.</p>
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">Acacia</div>
+      <div class="brand-sub">Expenses</div>
     </div>
-    <div class="flex border-b border-slate-100">
-      <button id="tabSignIn" onclick="switchAuthTab('signin')" class="flex-1 py-3 text-sm font-semibold text-acacia-700 border-b-2 border-acacia-600">Sign In</button>
-      <button id="tabSignUp" onclick="switchAuthTab('signup')" class="flex-1 py-3 text-sm font-semibold text-slate-500 border-b-2 border-transparent">Create Account</button>
+
+    <div class="nav-group">
+      <div class="nav-item active" data-view="dashboard"><span class="nav-dot"></span>Dashboard</div>
     </div>
-    <form id="signinForm" onsubmit="doSignIn(event)" class="p-6 space-y-3">
-      <div><label class="text-xs font-semibold text-slate-600">Company name</label>
-        <input id="siCompany" type="text" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="Exactly as used on Acacia ERP"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Email</label>
-        <input id="siEmail" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="you@example.com"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Password</label>
-        <input id="siPass" type="password" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-      <button type="submit" class="w-full h-10 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white font-semibold">Sign In</button>
-      <p id="siError" class="text-xs text-red-500 hidden"></p>
-      <p class="text-[11px] text-slate-500 text-center">Use the same <b>Company name</b> and <b>Email</b> you used on Acacia ERP to pull that workspace's data.</p>
-    </form>
-    <form id="signupForm" onsubmit="doSignUp(event)" class="hidden p-6 space-y-3">
-      <div><label class="text-xs font-semibold text-slate-600">Company name</label>
-        <input id="suCompany" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-xs font-semibold text-slate-600">First name</label><input id="suFirst" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-        <div><label class="text-xs font-semibold text-slate-600">Last name</label><input id="suLast" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
+
+    <div class="nav-group">
+      <div class="nav-label">Transactions</div>
+      <div class="nav-item" data-view="expenses"><span class="nav-dot"></span>Expenses</div>
+      <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Bills</div>
+      <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Payments</div>
+      <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Recurring Expenses</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Purchasing</div>
+      <div class="nav-item" data-view="suppliers"><span class="nav-dot"></span>Suppliers</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Reports</div>
+      <div class="nav-item" data-view="reports"><span class="nav-dot"></span>Expense Reports</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Settings</div>
+      <div class="nav-item" data-view="categories"><span class="nav-dot"></span>Categories</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="search-wrap">
+        <span>🔍</span>
+        <input id="globalSearch" type="text" placeholder="Search expenses...">
       </div>
-      <div><label class="text-xs font-semibold text-slate-600">Email</label>
-        <input id="suEmail" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm" placeholder="you@example.com"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Password</label><input id="suPass" type="password" required minlength="6" class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 outline-none text-sm"/></div>
-      <label class="flex items-start gap-2 text-xs text-slate-500"><input type="checkbox" required class="mt-0.5"/>I agree to the Acacia Terms & Privacy Policy.</label>
-      <button type="submit" class="w-full h-10 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white font-semibold">Create Account</button>
-      <p id="suError" class="text-xs text-red-500 hidden"></p>
-      <p class="text-[11px] text-slate-500 text-center">Creating an account here also registers it in Acacia ERP for the given company.</p>
-    </form>
+      <div class="topbar-right">
+        <span style="color:var(--ink-soft);cursor:default;">🔔</span>
+        <div class="user-chip">
+          <div class="user-badge" id="userBadge">?</div>
+          <span id="userName">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Dashboard</div>
+          <div class="view-sub" id="dashDateLine"></div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="openNewExpense()">＋ New Expense</button>
+        </div>
+      </div>
+
+      <div class="card-grid">
+        <div class="stat-card"><div class="stat-label">Total Expenses</div><div class="stat-value" id="statTotal">KES 0</div></div>
+        <div class="stat-card" id="statMonthCard"><div class="stat-label" id="statMonthLabel">This Month</div><div class="stat-value" id="statMonth">KES 0</div></div>
+        <div class="stat-card pending"><div class="stat-label">Pending Approval</div><div class="stat-value" id="statPending">0</div></div>
+        <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value" id="statPaid">KES 0</div></div>
+        <div class="stat-card rust"><div class="stat-label">Outstanding</div><div class="stat-value" id="statOutstanding">KES 0</div></div>
+        <div class="stat-card muted"><div class="stat-label">VAT / Input Tax</div><div class="stat-value" id="statVat">KES 0</div></div>
+        <div class="stat-card"><div class="stat-label">Operating Costs</div><div class="stat-value" id="statOperating">KES 0</div></div>
+        <div class="stat-card muted"><div class="stat-label">Approved</div><div class="stat-value" id="statApproved">0</div></div>
+      </div>
+
+      <div class="dash-row">
+        <div class="panel-box">
+          <h3>Expense by Category</h3>
+          <div id="catBars"></div>
+        </div>
+        <div class="panel-box">
+          <h3>Recent Expenses</h3>
+          <div id="recentList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPENSES -->
+    <div class="view" id="view-expenses">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Expenses</div>
+          <div class="view-sub" id="expCountLine">0 expenses</div>
+        </div>
+        <div class="toolbar">
+          <button class="btn" onclick="exportCSV()">Export</button>
+          <button class="btn btn-primary" onclick="openNewExpense()">＋ New Expense</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="filter-bar">
+          <input class="grow" type="text" id="expFilterText" placeholder="Filter by description, supplier, expense #..." oninput="renderExpenseTable()">
+          <select id="expFilterStatus" onchange="renderExpenseTable()">
+            <option value="">All statuses</option>
+            <option value="Draft">Draft</option>
+            <option value="Submitted">Submitted</option>
+            <option value="Pending Approval">Pending Approval</option>
+            <option value="Approved">Approved</option>
+            <option value="Posted">Posted</option>
+            <option value="Paid">Paid</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+          <select id="expFilterCategory" onchange="renderExpenseTable()">
+            <option value="">All categories</option>
+          </select>
+        </div>
+        <div id="expenseTableHost"></div>
+      </div>
+    </div>
+
+    <!-- SUPPLIERS -->
+    <div class="view" id="view-suppliers">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Suppliers</div>
+          <div class="view-sub">Vendors you record expenses against</div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="openNewSupplier()">＋ New Supplier</button>
+        </div>
+      </div>
+      <div id="supplierHost"></div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="view" id="view-reports">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Expense Reports</div>
+          <div class="view-sub">Computed from your recorded expenses</div>
+        </div>
+      </div>
+      <div class="report-grid">
+        <div class="report-card">
+          <h3>Expense by Category</h3>
+          <div id="repByCategory"></div>
+        </div>
+        <div class="report-card">
+          <h3>Expense by Supplier</h3>
+          <div id="repBySupplier"></div>
+        </div>
+        <div class="report-card">
+          <h3>Paid vs Unpaid</h3>
+          <div id="repPaidUnpaid"></div>
+        </div>
+        <div class="report-card">
+          <h3>VAT / Input Tax Summary</h3>
+          <div id="repVat"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div class="view" id="view-categories">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Categories</div>
+          <div class="view-sub">Expense accounts, mapped to the chart of accounts</div>
+        </div>
+      </div>
+      <div class="tree" id="categoryTree"></div>
+    </div>
+
   </div>
 </div>
 
-<div id="app" class="hidden flex-col h-screen">
-  <header class="flex items-center justify-between px-4 h-14 bg-white border-b border-slate-200 shrink-0">
-    <div class="flex items-center gap-3">
-    
-      <div class="flex items-center gap-2 pr-3 border-r border-slate-200">
-        <img src="acaciabooks-logo.png" alt="Logo" class="h-8 w-auto object-contain" />
-        <div class="font-bold text-[10px] text-slate-700 tracking-wide uppercase leading-tight">
-          Spear Tech<br>dvlp
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-acacia-500 to-acacia-700 flex items-center justify-center text-white font-bold">💰</div>
-        <div class="leading-tight">
-          <div class="font-bold text-acacia-800">Acacia Expense</div>
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1">Operational Costs · <span id="syncDot" class="inline-block w-2 h-2 rounded-full bg-slate-300"></span> <span id="syncStatus">idle</span></div>
-        </div>
-      </div>
+<!-- SIDE PANEL: Expense detail -->
+<div class="overlay" id="overlay" onclick="closeAllPanels()"></div>
+<div class="side-panel" id="detailPanel">
+  <div class="side-head">
+    <div>
+      <span class="status-pill" id="detStatusPill"></span>
+      <div class="det-title" id="detExpNo"></div>
+      <div class="det-sub" id="detExpDesc"></div>
     </div>
-    <div class="flex items-center gap-2">
-      <button onclick="openMail()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">✉️ Compose</button>
-      <button onclick="pullAll()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">↻ Sync</button>
-      <a href="./app_1701-1_3.html" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">← Back to Acacia</a>
-      <div class="relative">
-        <button onclick="toggleApps()" class="p-2 rounded-lg hover:bg-slate-100"><svg class="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="19" cy="5" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="19" r="1.5"/><circle cx="12" cy="19" r="1.5"/><circle cx="19" cy="19" r="1.5"/></svg></button>
-        <div id="appsMenu" class="hidden absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50 text-sm">
-          <a href="./app_1701-1_3.html" class="block px-3 py-2 hover:bg-slate-50">🏠 Acacia ERP (Main)</a>
-          <a href="./acacia-mail_4.html" class="block px-3 py-2 hover:bg-slate-50">✉️ Acacia Mail</a>
-          <a href="./acacia-inventory.html" class="block px-3 py-2 hover:bg-slate-50">📦 Inventory</a>
-          <a href="./acacia-payroll.html" class="block px-3 py-2 hover:bg-slate-50">💵 Payroll</a>
-          <a href="./acacia-expense.html" class="block px-3 py-2 hover:bg-slate-50 font-semibold text-acacia-700">💰 Expense</a>
-        </div>
-      </div>
-      <div id="userAvatar" class="w-9 h-9 rounded-full bg-acacia-700 text-white flex items-center justify-center text-xs font-bold"></div>
-      <button onclick="signOut()" class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">Sign out</button>
-    </div>
-  </header>
-
-  <div class="flex flex-1 overflow-hidden relative">
-    <aside class="w-60 bg-white border-r border-slate-200 p-3 overflow-y-auto shrink-0">
-      <div class="text-[10px] font-bold uppercase text-slate-400 px-2 mb-2">💰 Operational Costs</div>
-      <nav id="navList" class="space-y-1 text-sm"></nav>
-    </aside>
-
-    <main class="flex-1 overflow-auto p-6"><div id="view" class="fade-in"></div></main>
-
-    <!-- RIGHT SIDEBAR -->
-    <aside id="rightSidebar" class="hidden w-12 bg-white border-l border-slate-200 p-2 overflow-y-auto shrink-0 flex flex-col items-center space-y-4">
-      <button onclick="toggleAcaciaNotebook()" title="Acacia Notebook" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📔</button>
-      <button onclick="toggleWebinarPanel()" title="Webinars" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🎥</button>
-      <button onclick="toggleCommPanel()" title="Communication" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">💬</button>
-      <button onclick="toggleSupportPopup()" title="Support Hub" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🎧</button>
-      <button onclick="toggleOrgDetails()" title="Organization Details" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🏢</button>
-      <div class="w-6 h-px bg-slate-200 my-1"></div>
-      <button onclick="openGDocs()" title="Google Docs" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📄</button>
-      <button onclick="openGSheets()" title="Google Sheets" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📊</button>
-      <button onclick="openGPhotos()" title="Google Photos" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">🖼️</button>
-      <button onclick="openGCalendar()" title="Google Calendar" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-base">📅</button>
-    </aside>
+    <button class="side-close" onclick="closeAllPanels()">✕</button>
   </div>
+  <div class="side-body">
+    <div class="det-amount" id="detAmount"></div>
+    <div class="det-grid" id="detGrid"></div>
 
-  <!-- PANELS & POPUPS -->
-  <div id="acaciaNotebookPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
-    <div class="p-3 bg-purple-600 text-white font-bold flex justify-between items-center shrink-0">
-      <span>📔 Acacia Notebook</span>
-      <button onclick="toggleAcaciaNotebook()" class="hover:text-purple-200 font-bold text-sm">✕</button>
-    </div>
-    <div class="p-2 bg-slate-50 border-b border-gray-200 flex gap-1 shrink-0">
-      <button onclick="setNoteCategory('Work')" class="px-2 py-1 bg-purple-100 text-purple-700 rounded-md font-medium hover:bg-purple-200">Work</button>
-      <button onclick="setNoteCategory('Personal')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded-md font-medium hover:bg-blue-200">Personal</button>
-      <button onclick="setNoteCategory('Ideas')" class="px-2 py-1 bg-amber-100 text-amber-700 rounded-md font-medium hover:bg-amber-200">Ideas</button>
-    </div>
-    <div id="acaciaNoteList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
-    <div class="p-2 bg-white border-t border-gray-100 flex gap-1 shrink-0">
-      <input id="acaciaNoteText" type="text" placeholder="Write operational note..." class="flex-1 h-8 px-2 border border-gray-300 rounded-md outline-none text-xs" />
-      <button onclick="saveAcaciaNote()" class="px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-md font-bold text-xs">Save</button>
-      <button onclick="clearAcaciaNotes()" class="px-2 border border-gray-200 text-gray-500 rounded-md hover:bg-gray-50 text-xs">Clear</button>
-    </div>
+    <div class="section-label">Accounting</div>
+    <table class="acct-table" id="acctTable"></table>
+
+    <div class="section-label">Attachment</div>
+    <div id="detAttachment" style="font-size:13px;"></div>
+
+    <div class="section-label">Notes</div>
+    <div id="detNotes" style="font-size:13px;color:var(--ink-soft);"></div>
   </div>
-
-  <div id="webinarPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
-    <div class="p-3 bg-rose-600 text-white font-bold flex justify-between items-center shrink-0">
-      <span>🎥 Webinar Scheduler</span>
-      <button onclick="toggleWebinarPanel()" class="hover:text-rose-200 font-bold text-sm">✕</button>
-    </div>
-    <div class="p-3 border-b border-gray-200 bg-slate-50 space-y-2 shrink-0">
-      <input id="webinarTitle" type="text" placeholder="Webinar Session Title" class="w-full h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
-      <div class="grid grid-cols-2 gap-1.5">
-        <input id="webinarDate" type="datetime-local" class="h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
-        <input id="webinarLink" type="text" placeholder="Meeting URL Link" class="h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
-      </div>
-      <div class="flex gap-1.5">
-        <button onclick="addWebinar()" class="flex-1 h-8 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-md text-xs">Add Session</button>
-        <button onclick="clearWebinars()" class="px-2 border border-gray-200 text-gray-500 rounded-md hover:bg-gray-50 text-xs">Clear</button>
-      </div>
-    </div>
-    <div id="webinarList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
-  </div>
-
-  <div id="commPanel" class="hidden fixed top-20 right-16 w-80 h-half bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col z-20 overflow-hidden text-xs">
-    <div class="p-3 bg-blue-700 text-white font-bold flex justify-between items-center shrink-0">
-      <span>💬 Dispatch Terminal</span>
-      <button onclick="toggleCommPanel()" class="hover:text-blue-200 font-bold text-sm">✕</button>
-    </div>
-    <div class="p-3 border-b border-gray-200 bg-slate-50 space-y-2 shrink-0">
-      <input id="commUser" type="text" placeholder="Recipient user identifier" class="w-full h-8 px-2 border border-gray-300 rounded-md outline-none text-xs bg-white" />
-      <textarea id="commMessage" placeholder="Type internal memo data lines..." class="w-full h-14 p-2 border border-gray-300 rounded-md outline-none text-xs resize-none bg-white"></textarea>
-      <div class="flex gap-1 justify-between items-center">
-        <div class="flex gap-1">
-          <button onclick="insertTemplate('Invoice Link')" class="px-1.5 py-0.5 bg-gray-200 rounded text-[10px] text-gray-600 hover:bg-gray-300">Invoice template</button>
-          <button onclick="insertTemplate('Report Update')" class="px-1.5 py-0.5 bg-gray-200 rounded text-[10px] text-gray-600 hover:bg-gray-300">Report update</button>
-        </div>
-        <button onclick="sendPrivateMessage()" class="px-3 h-7 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-md text-xs">Send</button>
-      </div>
-      <button onclick="sharePrivateReport()" class="w-full h-7 border border-blue-200 text-blue-700 hover:bg-blue-50 font-medium rounded-md text-xs">Share Cryptographic Ledger Report Context</button>
-    </div>
-    <div id="commLog" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50"></div>
-  </div>
-
-  <div id="supportPopup" class="hidden fixed bottom-20 right-4 w-96 bg-white border border-gray-300 rounded-lg shadow-xl z-50">
-    <div class="bg-blue-900 text-white px-3 py-2 rounded-t-lg flex justify-between items-center">
-      <div>
-        <h3 class="font-bold">🎧 Acacia AI Support</h3>
-        <small class="text-blue-100">Ask me anything about Acacia Sales Hub</small>
-      </div>
-      <button onclick="toggleSupportPopup()" class="text-white text-xl hover:text-gray-200">✕</button>
-    </div>
-
-    <div id="supportMessages" class="h-80 overflow-y-auto p-3 bg-white text-black text-sm space-y-2">
-      <div class="bg-white border border-gray-300 rounded-lg shadow-sm p-3">
-        <h2 class="text-base font-bold text-blue-900 mb-1">🎧Welcome to Acacia AI Support</h2>
-        <p class="text-gray-700 text-xs mb-3">I'm your intelligent Acacia Sales Hub assistant. I can guide you through managing ledger workflows, tracking sales pipelines, and resolving module questions.</p>
-        
-        <p class="font-semibold text-gray-800 text-xs mb-1">📊 Covered Sales Modules:</p>
-        <div class="grid grid-cols-2 gap-1 text-xs mb-3 text-gray-700">
-          <div>👥 Customers</div>
-          <div>📄 Invoices</div>
-          <div>✉️ Quotes</div>
-          <div>🛒 Orders</div>
-          <div>📦 Bulk Invoicing</div>
-          <div>💳 Credit Notes</div>
-          <div>↩️ Sales Returns</div>
-          <div>💰 Receipts</div>
-          <div>🔁 Recurring Invoices</div>
-          <div>🚚 Delivery</div>
-          <div>📊 Statement</div>
-        </div>
-
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-1">
-          <p class="font-semibold text-blue-900 text-xs mb-1">💬 Try asking:</p>
-          <ul class="list-disc ml-4 space-y-0.5 text-gray-700 text-xs">
-            <li>How do I add a new client to the Customers Registry?</li>
-            <li>How can I execute a Bulk Invoicing run?</li>
-            <li>Where do I log a Credit Note or Sales Return?</li>
-            <li>How do I check a customer's total outstanding Statement?</li>
-            <li>How do I dispatch an active Delivery tracking item?</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <div class="border-t p-2 bg-gray-50 flex flex-col gap-1">
-      <div class="flex gap-1">
-        <a href="https://wa.me/254717346231" target="_blank" class="flex-1 flex items-center justify-center gap-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs font-semibold transition">📱 WhatsApp</a>
-        <a href="mailto:info@acaciabooks.ke" class="flex-1 flex items-center justify-center gap-1 bg-gray-600 hover:bg-gray-700 text-white py-1.5 rounded text-xs font-semibold transition">📧 Email</a>
-        <button onclick="toggleTawkChat()" class="flex-1 flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded text-xs font-semibold transition">💬 Chat</button>
-      </div>
-    </div>
-
-    <div class="border-t p-2">
-      <input id="supportQuestion" type="text" class="w-full border border-gray-300 rounded px-2 py-1.5 mb-1.5 text-xs text-black placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your sales module question...">
-      <button onclick="sendSupportQuestion()" class="w-full bg-blue-900 hover:bg-blue-800 text-white py-1.5 rounded text-xs font-semibold transition">Send</button>
-    </div>
+  <div class="side-foot">
+    <button class="btn" onclick="editCurrentExpense()">Edit</button>
+    <button class="btn" onclick="duplicateCurrentExpense()">Duplicate</button>
+    <button class="btn" onclick="advanceStatus()" id="advanceBtn">Advance status</button>
+    <button class="btn btn-danger-text" onclick="deleteCurrentExpense()">Delete</button>
   </div>
 </div>
 
-<div id="mailModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-  <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-acacia-800 text-white">
-      <div class="font-semibold text-sm">New message · Acacia Mail</div>
-      <button onclick="closeMail()" class="text-white/80 hover:text-white text-lg">✕</button>
+<!-- SIDE PANEL: New / edit expense form -->
+<div class="side-panel" id="formPanel" style="width:520px;">
+  <div class="side-head">
+    <div>
+      <div class="det-title" id="formTitle">New Expense</div>
+      <div class="det-sub">Fill in the details below</div>
     </div>
-    <form onsubmit="sendMailFromApp(event)" class="p-5 space-y-3">
-      <div><label class="text-xs font-semibold text-slate-600">To</label>
-        <input id="mmTo" type="email" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 text-sm" placeholder="recipient@example.com"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Subject</label>
-        <input id="mmSubject" type="text" required class="w-full mt-1 h-10 px-3 rounded-lg border border-slate-300 text-sm"/></div>
-      <div><label class="text-xs font-semibold text-slate-600">Message</label>
-        <textarea id="mmBody" rows="6" required class="w-full mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm"></textarea></div>
-      <p id="mmStatus" class="text-xs text-slate-500"></p>
-      <div class="flex justify-end gap-2">
-        <button type="button" onclick="closeMail()" class="px-4 h-9 rounded-lg border border-slate-200 text-sm">Cancel</button>
-        <button type="submit" class="px-5 h-9 rounded-lg bg-acacia-600 hover:bg-acacia-700 text-white text-sm font-semibold">Send</button>
+    <button class="side-close" onclick="closeAllPanels()">✕</button>
+  </div>
+  <div class="side-body">
+    <form id="expenseForm" class="form-grid" onsubmit="return false;">
+      <div class="field"><label>Expense Date</label><input type="date" id="f_date" required></div>
+      <div class="field"><label>Expense #</label><input type="text" id="f_expno" disabled></div>
+
+      <div class="field"><label>Supplier</label>
+        <select id="f_supplier"><option value="">Select supplier...</option></select>
       </div>
+      <div class="field"><label>Expense Account</label>
+        <select id="f_account" required><option value="">Select account...</option></select>
+      </div>
+
+      <div class="field full"><label>Description</label><input type="text" id="f_desc" placeholder="e.g. Office rent — September" required></div>
+      <div class="field full"><label>Reference</label><input type="text" id="f_ref" placeholder="Invoice / receipt number"></div>
+
+      <div class="field"><label>Currency</label>
+        <select id="f_currency"><option>KES</option><option>USD</option><option>EUR</option></select>
+      </div>
+      <div class="field"><label>Amount (excl. tax)</label><input type="number" id="f_amount" min="0" step="0.01" placeholder="0.00" required></div>
+
+      <div class="field"><label>Tax</label>
+        <select id="f_tax">
+          <option value="0">No Tax</option>
+          <option value="16" selected>VAT 16%</option>
+          <option value="8">VAT 8%</option>
+        </select>
+      </div>
+      <div class="field readonly"><label>Tax Amount</label><input type="text" id="f_taxamt" disabled></div>
+
+      <div class="field readonly full"><label>Total</label><input type="text" id="f_total" disabled></div>
+
+      <div class="field"><label>Payment Account</label>
+        <select id="f_payaccount">
+          <option>Cash</option>
+          <option>KCB Bank</option>
+          <option>Equity Bank</option>
+          <option>M-Pesa</option>
+        </select>
+      </div>
+      <div class="field"><label>Payment Status</label>
+        <select id="f_paystatus">
+          <option>Unpaid</option>
+          <option>Paid</option>
+        </select>
+      </div>
+
+      <div class="field full"><label>Attachment</label>
+        <div class="upload-box" id="uploadBox" onclick="document.getElementById('f_attachment').click()">Click to attach a receipt (filename only, stored locally)</div>
+        <input type="file" id="f_attachment" style="display:none" onchange="onAttachChange()">
+      </div>
+
+      <div class="field full"><label>Notes</label><textarea id="f_notes" placeholder="Optional notes"></textarea></div>
     </form>
   </div>
+  <div class="side-foot">
+    <button class="btn" onclick="saveExpense('Draft')">Save Draft</button>
+    <button class="btn btn-primary" onclick="saveExpense('Submitted')">Save & Submit</button>
+  </div>
 </div>
+
+<!-- SIDE PANEL: New supplier (lightweight) -->
+<div class="side-panel" id="supplierPanel" style="width:400px;">
+  <div class="side-head">
+    <div><div class="det-title">New Supplier</div><div class="det-sub">Add a vendor</div></div>
+    <button class="side-close" onclick="closeAllPanels()">✕</button>
+  </div>
+  <div class="side-body">
+    <div class="field" style="margin-bottom:14px;"><label>Supplier name</label><input type="text" id="s_name" placeholder="e.g. ABC Properties Ltd"></div>
+    <div class="field" style="margin-bottom:14px;"><label>Contact</label><input type="text" id="s_contact" placeholder="Phone or email"></div>
+    <div class="field"><label>Notes</label><textarea id="s_notes"></textarea></div>
+  </div>
+  <div class="side-foot"><button class="btn btn-primary" onclick="saveSupplier()">Save Supplier</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
-/* ============ Shared auth linked to Acacia ERP (app 1707) ============ */
-const SESSION_KEY='acacia_session';
-function currentUser(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch{return null}}
-function initials(n){return (n||'?').split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase()}
-function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]))}
-function toCompanyId(name){ return 'comp_' + String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'_'); }
-function switchAuthTab(t){const s=t==='signin';
-  tabSignIn.classList.toggle('text-acacia-700',s);tabSignIn.classList.toggle('border-acacia-600',s);
-  tabSignIn.classList.toggle('text-slate-500',!s);tabSignIn.classList.toggle('border-transparent',!s);
-  tabSignUp.classList.toggle('text-acacia-700',!s);tabSignUp.classList.toggle('border-acacia-600',!s);
-  tabSignUp.classList.toggle('text-slate-500',s);tabSignUp.classList.toggle('border-transparent',s);
-  signinForm.classList.toggle('hidden',!s);signupForm.classList.toggle('hidden',s);}
+/* ================= DATA LAYER ================= */
+const DB_KEY = 'acacia_expenses_db_v1';
 
-/* Supabase client (shared project with Acacia ERP) */
-const sb = window.supabase.createClient(window.__SUPA_URL__, window.__SUPA_KEY__);
+const DEFAULT_CATEGORIES = {
+  "Operating Expenses": [
+    "Rent Expense","Electricity Expense","Water Expense","Internet Expense",
+    "Telephone Expense","Fuel Expense","Transport Expense","Office Supplies",
+    "Repairs & Maintenance","Advertising","Insurance","Bank Charges",
+    "Professional Fees","Software & Subscriptions","Miscellaneous Expense"
+  ]
+};
 
-/* Pull the shared users list from app_state (app 1707 stores it under 'users') */
-async function fetchUsers(){
-  try{
-    const { data } = await sb.from('app_state').select('value').eq('key','users').maybeSingle();
-    if(Array.isArray(data?.value)) return data.value;
-  }catch(e){ console.warn('users fetch failed',e); }
-  try{ return JSON.parse(localStorage.getItem('users')||'[]'); }catch{ return []; }
-}
-async function saveUsersCloud(users){
-  localStorage.setItem('users', JSON.stringify(users));
-  try{
-    await sb.from('app_state').upsert({ key:'users', value:users, updated_at:new Date().toISOString() }, { onConflict:'key' });
-  }catch(e){ console.warn('users save failed',e); }
-}
-
-async function doSignIn(e){
-  e.preventDefault();
-  siError.classList.add('hidden');
-  const company=(siCompany.value||'').trim();
-  const email=(siEmail.value||'').trim().toLowerCase();
-  const pass=siPass.value;
-  if(!company||!email){siError.textContent='Company name and email are required.';siError.classList.remove('hidden');return}
-  const users=await fetchUsers();
-  const compId=toCompanyId(company);
-  const match=users.find(u=>{
-    const uEmail=(u.email||'').toLowerCase();
-    const uCompId=u.companyId||toCompanyId(u.companyName||'');
-    return uEmail===email && uCompId===compId;
-  });
-  if(!match){siError.textContent='No matching Acacia ERP account for that company + email.';siError.classList.remove('hidden');return}
-  if(match.password && match.password!==pass){siError.textContent='Incorrect password.';siError.classList.remove('hidden');return}
-  const session={ email:match.email, name:match.fullName||match.username||email, companyId:compId, companyName:match.companyName||company };
-  localStorage.setItem(SESSION_KEY,JSON.stringify(session));
-  boot();
-}
-
-async function doSignUp(e){
-  e.preventDefault();
-  suError.classList.add('hidden');
-  const company=(suCompany.value||'').trim();
-  const email=(suEmail.value||'').trim().toLowerCase();
-  const pass=suPass.value;
-  if(!company||!email){suError.textContent='Company name and email are required.';suError.classList.remove('hidden');return}
-  const users=await fetchUsers();
-  const compId=toCompanyId(company);
-  if(users.some(u=>(u.email||'').toLowerCase()===email)){
-    suError.textContent='Email already registered — use Sign In instead.';suError.classList.remove('hidden');return;
-  }
-  const rec={
-    username:email.split('@')[0],
-    email, password:pass,
-    fullName:((suFirst.value||'')+' '+(suLast.value||'')).trim()||email,
-    role:'admin', companyId:compId, companyName:company,
-    registered:new Date().toISOString(), status:'active', modules:[]
+function defaultDB(){
+  return {
+    user: "Joseph",
+    expenses: [],
+    suppliers: [],
+    categories: DEFAULT_CATEGORIES,
+    nextExpNo: 1
   };
-  users.push(rec);
-  await saveUsersCloud(users);
-  localStorage.setItem(SESSION_KEY,JSON.stringify({ email:rec.email, name:rec.fullName, companyId:compId, companyName:company }));
-  boot();
 }
 
-function signOut(){localStorage.removeItem(SESSION_KEY);location.reload()}
-function toggleApps(){appsMenu.classList.toggle('hidden')}
-document.addEventListener('click',e=>{if(!e.target.closest('#appsMenu')&&!e.target.closest('button[onclick*=toggleApps]')) appsMenu?.classList.add('hidden')});
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(!raw) return defaultDB();
+    const parsed = JSON.parse(raw);
+    if(!parsed.categories) parsed.categories = DEFAULT_CATEGORIES;
+    return parsed;
+  }catch(e){ return defaultDB(); }
+}
+function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 
-/* Sidepanel toggle functions */
-function toggleAcaciaNotebook(){ document.getElementById('acaciaNotebookPanel')?.classList.toggle('hidden'); }
-function toggleWebinarPanel(){ document.getElementById('webinarPanel')?.classList.toggle('hidden'); }
-function toggleCommPanel(){ document.getElementById('commPanel')?.classList.toggle('hidden'); }
-function toggleSupportPopup(){ document.getElementById('supportPopup')?.classList.toggle('hidden'); }
+let db = loadDB();
+let currentDetailId = null;
+let editingId = null;
 
-/* ============ Company-scoped keys (matches app 1707's getCompanyKey) ============ */
-function currentCompanyId(){ const u=currentUser(); return u?.companyId || 'default_company'; }
-function scopedKey(k){ return k + '_' + currentCompanyId(); }
-
-/* Operational-cost submodules mapped to app 1701 keys */
-const MODULES = [
-  { id:'expenses',   label:'Operational Costs', key:'operationalCosts'   },
-  { id:'recurring',  label:'Recurring Costs',   key:'recurringPayments'  },
-  { id:'categories', label:'Cost Categories',   key:'chartOfAccounts'    },
-  { id:'centres',    label:'Cost Centres',      key:'projects'           },
-  { id:'approvals',  label:'Approvals',         key:'manualTransactions' },
-  { id:'receipts',   label:'Receipts',          key:'projectExpenses'    },
-  { id:'reimburse',  label:'Reimbursements',    key:'payments'           },
-  { id:'reports',    label:'Cost Reports',      key:'transactions'       },
-];
-
-const store = {};                 // { moduleId: [rows] }
-let active = MODULES[0].id;
-
-function setSync(status, tone){
-  syncStatus.textContent = status;
-  const dot = syncDot; dot.className = 'inline-block w-2 h-2 rounded-full ' +
-    ({ok:'bg-emerald-500',busy:'bg-amber-400 animate-pulse',err:'bg-red-500',idle:'bg-slate-300'}[tone]||'bg-slate-300');
+/* ================= HELPERS ================= */
+function fmt(n){
+  n = Number(n)||0;
+  return "KES " + n.toLocaleString('en-KE', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+function fmtPlain(n){
+  n = Number(n)||0;
+  return n.toLocaleString('en-KE', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso+"T00:00:00");
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function allCategoryNames(){
+  let out = [];
+  Object.values(db.categories).forEach(list => out = out.concat(list));
+  return out;
+}
+function statusClass(s){
+  return 'status-' + s.toLowerCase().replace(' approval','').replace(' ','-');
 }
 
-async function pullOne(m){
-  try {
-    const scoped=scopedKey(m.key);
-    let { data, error } = await sb.from('app_state').select('value').eq('key', scoped).maybeSingle();
-    if(error) throw error;
-    if(!data){
-      // Fallback: legacy unscoped key (older ERP records)
-      const r = await sb.from('app_state').select('value').eq('key', m.key).maybeSingle();
-      data = r.data;
-    }
-    store[m.id] = Array.isArray(data?.value) ? data.value : [];
-  } catch(e) {
-    console.warn(`Failed pulling key ${m.key}:`, e);
-    store[m.id] = []; // Fallback gracefully instead of throwing sync status error
+/* ================= NAV ================= */
+document.querySelectorAll('.nav-item[data-view]').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item[data-view]').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+    const v = item.dataset.view;
+    document.querySelectorAll('.view').forEach(sec=>sec.classList.remove('active'));
+    document.getElementById('view-'+v).classList.add('active');
+    if(v==='expenses') renderExpenseTable();
+    if(v==='dashboard') renderDashboard();
+    if(v==='reports') renderReports();
+    if(v==='categories') renderCategories();
+    if(v==='suppliers') renderSuppliers();
+  });
+});
+
+document.getElementById('globalSearch').addEventListener('input', (e)=>{
+  const v = e.target.value.trim();
+  if(v.length===0) return;
+  document.querySelector('.nav-item[data-view="expenses"]').click();
+  document.getElementById('expFilterText').value = v;
+  renderExpenseTable();
+});
+
+/* ================= INIT USER ================= */
+function initUser(){
+  document.getElementById('userName').textContent = db.user;
+  document.getElementById('userBadge').textContent = db.user.slice(0,1).toUpperCase();
+}
+
+/* ================= DASHBOARD ================= */
+function renderDashboard(){
+  const now = new Date();
+  document.getElementById('dashDateLine').textContent = now.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  const exps = db.expenses;
+  const total = exps.reduce((s,e)=>s+e.total,0);
+  const monthKey = now.toISOString().slice(0,7);
+  const thisMonth = exps.filter(e=>e.date.slice(0,7)===monthKey).reduce((s,e)=>s+e.total,0);
+  const pending = exps.filter(e=>e.status==='Pending Approval').length;
+  const approved = exps.filter(e=>e.status==='Approved').length;
+  const paid = exps.filter(e=>e.status==='Paid').reduce((s,e)=>s+e.total,0);
+  const outstanding = exps.filter(e=>e.paymentStatus==='Unpaid').reduce((s,e)=>s+e.total,0);
+  const vat = exps.reduce((s,e)=>s+e.taxAmount,0);
+  const operating = exps.reduce((s,e)=>s+e.amount,0);
+
+  document.getElementById('statTotal').textContent = fmt(total);
+  document.getElementById('statMonth').textContent = fmt(thisMonth);
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('statPaid').textContent = fmt(paid);
+  document.getElementById('statOutstanding').textContent = fmt(outstanding);
+  document.getElementById('statVat').textContent = fmt(vat);
+  document.getElementById('statOperating').textContent = fmt(operating);
+  document.getElementById('statApproved').textContent = approved;
+
+  // category bars
+  const catHost = document.getElementById('catBars');
+  if(exps.length===0){
+    catHost.innerHTML = `<div class="empty-state" style="padding:22px;"><div class="hint">No expenses recorded yet — categories will appear here once you add one.</div></div>`;
+  } else {
+    const byCat = {};
+    exps.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.total; });
+    const max = Math.max(...Object.values(byCat));
+    catHost.innerHTML = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`
+      <div class="bar-row">
+        <div class="name">${cat}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(amt/max*100).toFixed(0)}%"></div></div>
+        <div class="amt">${fmt(amt)}</div>
+      </div>`).join('');
+  }
+
+  // recent list
+  const recentHost = document.getElementById('recentList');
+  if(exps.length===0){
+    recentHost.innerHTML = `<div class="empty-state" style="padding:22px;">
+        <div class="title">No expenses yet</div>
+        <div class="hint">Record your first expense to start seeing activity here.</div>
+        <button class="btn btn-primary btn-sm" onclick="openNewExpense()">＋ New Expense</button>
+      </div>`;
+  } else {
+    const recent = [...exps].sort((a,b)=> b.date.localeCompare(a.date) || b.expNo.localeCompare(a.expNo)).slice(0,6);
+    recentHost.innerHTML = recent.map(e=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px;">
+        <div>
+          <div style="font-weight:600;">${escapeHtml(e.description)}</div>
+          <div style="font-size:11.5px;color:var(--ink-soft);">${fmtDate(e.date)} · ${e.category}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-variant-numeric:tabular-nums;">${fmt(e.total)}</div>
+          <span class="status-pill ${statusClass(e.status)}" style="font-size:10px;">${e.status}</span>
+        </div>
+      </div>`).join('');
   }
 }
-async function pullAll(){
-  setSync('syncing…','busy');
-  try{
-    await Promise.all(MODULES.map(pullOne));
-    setSync('synced · '+(currentUser()?.companyName||'workspace'),'ok');
-    renderView();
-  }catch(e){ console.warn(e); setSync('sync error','err'); }
-}
-async function pushOne(m){
-  setSync('saving…','busy');
-  const { error } = await sb.from('app_state').upsert(
-    { key: scopedKey(m.key), value: store[m.id]||[], updated_at: new Date().toISOString() },
-    { onConflict: 'key' }
-  );
-  if(error){ setSync('save error','err'); alert('Save failed: '+error.message); return false }
-  setSync('synced · '+(currentUser()?.companyName||'workspace'),'ok'); return true;
+
+/* ================= EXPENSES TABLE ================= */
+function populateCategoryFilter(){
+  const sel = document.getElementById('expFilterCategory');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All categories</option>' + allCategoryNames().map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value = current;
 }
 
-/* Render */
-function renderNav(){
-  navList.innerHTML = MODULES.map(m=>`<button onclick="go('${m.id}')" class="nav-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 ${m.id===active?'active':''}">${m.label}</button>`).join('');
-}
-function go(id){ active=id; renderNav(); renderView(); }
+function renderExpenseTable(){
+  populateCategoryFilter();
+  const textF = document.getElementById('expFilterText').value.trim().toLowerCase();
+  const statusF = document.getElementById('expFilterStatus').value;
+  const catF = document.getElementById('expFilterCategory').value;
 
-function collectColumns(rows){
-  const seen=new Set(); rows.forEach(r=>r && typeof r==='object' && Object.keys(r).forEach(k=>seen.add(k)));
-  return Array.from(seen).slice(0,10);
-}
-function cellText(v){
-  if(v==null) return '';
-  if(typeof v==='object') return JSON.stringify(v);
-  return String(v);
-}
-function renderView(){
-  const m = MODULES.find(x=>x.id===active);
-  const rows = store[m.id] || [];
-  const cols = collectColumns(rows);
-  view.innerHTML = `
-    <div class="flex items-center justify-between mb-4">
-      <div><h2 class="text-2xl font-bold text-slate-800">${m.label}</h2>
-        <p class="text-sm text-slate-500">${rows.length} record${rows.length===1?'':'s'} · live from Acacia ERP · <code class="text-[11px] bg-slate-100 px-1 rounded">app_state.${m.key}</code></p></div>
-      <div class="flex gap-2">
-        <button onclick="exportCsv()" class="px-3 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Export CSV</button>
-        <button onclick="addRow()" class="px-4 py-2 text-sm bg-acacia-600 hover:bg-acacia-700 text-white rounded-lg font-semibold">+ New</button>
-      </div>
-    </div>
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden"><div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
-          <tr>${cols.length?cols.map(c=>`<th class="px-3 py-2">${escapeHtml(c)}</th>`).join(''):'<th class="px-3 py-2">Value</th>'}<th class="px-3 py-2"></th></tr>
-        </thead>
-        <tbody>
-          ${rows.length===0?`<tr><td colspan="${(cols.length||1)+1}" class="text-center text-slate-400 py-10">No ${m.label.toLowerCase()} records synced yet. Create records in Acacia ERP, or click <b>+ New</b> here.</td></tr>`:
-          rows.map((r,i)=>`<tr class="border-t border-slate-100 hover:bg-slate-50 align-top">
-            ${cols.length?cols.map(c=>`<td class="px-3 py-2 max-w-xs truncate">${escapeHtml(cellText(r?.[c]))}</td>`).join(''):`<td class="px-3 py-2">${escapeHtml(cellText(r))}</td>`}
-            <td class="px-3 py-2 text-right"><button onclick="delRow(${i})" class="text-red-500 hover:underline text-xs">Delete</button></td>
-          </tr>`).join('')}
-        </tbody>
-      </table></div></div>`;
-}
+  let list = [...db.expenses];
+  if(textF) list = list.filter(e =>
+    e.description.toLowerCase().includes(textF) ||
+    (e.supplierName||'').toLowerCase().includes(textF) ||
+    e.expNo.toLowerCase().includes(textF));
+  if(statusF) list = list.filter(e=>e.status===statusF);
+  if(catF) list = list.filter(e=>e.category===catF);
+  list.sort((a,b)=> b.date.localeCompare(a.date) || b.expNo.localeCompare(a.expNo));
 
-async function addRow(){
-  const m = MODULES.find(x=>x.id===active);
-  const rows = store[m.id] || [];
-  const template = rows.find(r=>r && typeof r==='object');
-  const keys = template ? Object.keys(template) : (prompt('New record — comma-separated field names:','name,quantity,price')||'').split(',').map(s=>s.trim()).filter(Boolean);
-  if(!keys.length) return;
-  const rec = {};
-  for(const k of keys){ const v = prompt(k+':'); if(v===null) return; rec[k]=v; }
-  store[m.id] = [...rows, rec];
-  if(await pushOne(m)) renderView(); else await pullOne(m).then(renderView);
-}
-async function delRow(i){
-  if(!confirm('Delete this record from Acacia ERP?')) return;
-  const m = MODULES.find(x=>x.id===active);
-  store[m.id].splice(i,1);
-  if(await pushOne(m)) renderView(); else await pullOne(m).then(renderView);
-}
-function exportCsv(){
-  const m=MODULES.find(x=>x.id===active); const rows=store[m.id]||[]; const cols=collectColumns(rows);
-  const csv=[cols.join(','),...rows.map(r=>cols.map(c=>JSON.stringify(cellText(r?.[c]))).join(','))].join('\n');
-  const a=document.createElement('a');a.href='data:text/csv,'+encodeURIComponent(csv);a.download=m.key+'.csv';a.click();
-}
+  document.getElementById('expCountLine').textContent = `${db.expenses.length} expense${db.expenses.length===1?'':'s'}`;
 
-/* ============ Acacia Mail bridge ============ */
-const MAIL_DATA_PREFIX = 'acacia_data_';
-function openMail(){ mmStatus.textContent=''; mmTo.value=''; mmSubject.value=''; mmBody.value=''; mailModal.classList.remove('hidden'); }
-function closeMail(){ mailModal.classList.add('hidden'); }
-function loadMailbox(email){
-  try{ return JSON.parse(localStorage.getItem(MAIL_DATA_PREFIX+email)) || {mails:[],events:[],aiChat:[]}; }
-  catch{ return {mails:[],events:[],aiChat:[]}; }
-}
-function saveMailbox(email, box){
-  localStorage.setItem(MAIL_DATA_PREFIX+email, JSON.stringify(box));
-  // Mirror to Supabase so Acacia Mail can pull it on other devices
-  try{ sb.from('app_state').upsert({ key: MAIL_DATA_PREFIX+email, value: box, updated_at:new Date().toISOString() }, { onConflict:'key' }); }catch(e){}
-}
-async function sendMailFromApp(e){
-  e.preventDefault();
-  const u = currentUser();
-  if(!u){ mmStatus.textContent='Sign in first.'; return; }
-  const to = mmTo.value.trim().toLowerCase();
-  const subject = mmSubject.value.trim();
-  const bodyText = mmBody.value.trim();
-  if(!to||!subject||!bodyText) return;
-  mmStatus.textContent = 'Verifying recipient…';
-  const users = await fetchUsers();
-  const recipient = users.find(x=>(x.email||'').toLowerCase()===to);
-  if(!recipient){
-    mmStatus.textContent = '❌ No Acacia account uses that email. The message was not sent.';
+  const host = document.getElementById('expenseTableHost');
+  if(db.expenses.length===0){
+    host.innerHTML = `<div class="empty-state">
+      <div class="title">No expenses recorded</div>
+      <div class="hint">Everything you record will feed straight into the dashboard, reports, and accounting entries.</div>
+      <button class="btn btn-primary btn-sm" onclick="openNewExpense()">＋ Record your first expense</button>
+    </div>`;
     return;
   }
-  const bodyHtml = escapeHtml(bodyText).replace(/\n/g,'<br>');
-  const now = Date.now();
-  const mailId = 'm'+now;
+  if(list.length===0){
+    host.innerHTML = `<div class="empty-state"><div class="hint">No expenses match this filter.</div></div>`;
+    return;
+  }
 
-  // 1) Deliver to recipient's inbox (same key Acacia Mail reads: acacia_data_<email>.mails)
-  const inbox = loadMailbox(recipient.email);
-  inbox.mails = inbox.mails || [];
-  inbox.mails.unshift({
-    id: mailId,
-    from: u.name || u.email,
-    email: u.email,
-    to: recipient.email,
-    subject, preview: bodyText.slice(0,90), body: bodyHtml,
-    time: now, read: false, starred: false, folder: 'inbox'
-  });
-  saveMailbox(recipient.email, inbox);
-
-  // 2) Save copy in sender's Sent folder
-  const sent = loadMailbox(u.email);
-  sent.mails = sent.mails || [];
-  sent.mails.unshift({
-    id: mailId+'_s',
-    from: u.name || u.email,
-    email: recipient.email,
-    to: recipient.email,
-    subject, preview: bodyText.slice(0,90), body: bodyHtml,
-    time: now, read: true, starred: false, folder: 'sent'
-  });
-  saveMailbox(u.email, sent);
-
-  mmStatus.textContent = '✅ Sent to '+recipient.email+' — will appear in their Acacia Mail inbox.';
-  setTimeout(closeMail, 1200);
+  host.innerHTML = `<table>
+    <thead><tr>
+      <th>Date</th><th>Expense #</th><th>Description</th><th>Supplier</th>
+      <th>Category</th><th>Tax</th><th style="text-align:right;">Amount</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+      ${list.map(e=>`
+        <tr onclick="openDetail('${e.id}')">
+          <td>${fmtDate(e.date)}</td>
+          <td>${e.expNo}</td>
+          <td class="desc-cell"><div class="title">${escapeHtml(e.description)}</div>${e.reference?`<div class="sub">Ref: ${escapeHtml(e.reference)}</div>`:''}</td>
+          <td>${e.supplierName ? escapeHtml(e.supplierName) : '—'}</td>
+          <td>${e.category}</td>
+          <td>${e.taxRate>0 ? 'VAT '+e.taxRate+'%' : '—'}</td>
+          <td class="num">${fmtPlain(e.total)}</td>
+          <td><span class="status-pill ${statusClass(e.status)}">${e.status}</span></td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 
-function boot(){
-  const u=currentUser();
-  if(!u){authScreen.classList.remove('hidden');app.classList.add('hidden');app.classList.remove('flex');return}
-  authScreen.classList.add('hidden');app.classList.remove('hidden');app.classList.add('flex');
-  userAvatar.textContent=initials(u.companyName||u.name||u.email);userAvatar.title=(u.companyName||'')+' · '+(u.email||'');
-  
-  // Display right sidebar once logged in
-  document.getElementById('rightSidebar')?.classList.remove('hidden');
-  
-  renderNav(); renderView(); pullAll();
+function escapeHtml(s){
+  const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML;
 }
-boot();
+
+/* ================= SUPPLIERS ================= */
+function renderSuppliers(){
+  const host = document.getElementById('supplierHost');
+  if(db.suppliers.length===0){
+    host.innerHTML = `<div class="empty-state">
+      <div class="title">No suppliers yet</div>
+      <div class="hint">Add the vendors you pay so you can attach them to expenses.</div>
+      <button class="btn btn-primary btn-sm" onclick="openNewSupplier()">＋ New Supplier</button>
+    </div>`;
+    return;
+  }
+  host.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Contact</th><th style="text-align:right;">Expenses recorded</th></tr></thead>
+    <tbody>${db.suppliers.map(s=>{
+      const count = db.expenses.filter(e=>e.supplierId===s.id).length;
+      return `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.contact||'—')}</td><td class="num">${count}</td></tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function openNewSupplier(){
+  document.getElementById('s_name').value='';
+  document.getElementById('s_contact').value='';
+  document.getElementById('s_notes').value='';
+  openPanel('supplierPanel');
+}
+function saveSupplier(){
+  const name = document.getElementById('s_name').value.trim();
+  if(!name){ showToast('Supplier name is required'); return; }
+  db.suppliers.push({id:'sup_'+Date.now(), name, contact:document.getElementById('s_contact').value.trim(), notes:document.getElementById('s_notes').value.trim()});
+  saveDB();
+  closeAllPanels();
+  renderSuppliers();
+  populateSupplierSelect();
+  showToast('Supplier added');
+}
+
+/* ================= CATEGORIES ================= */
+function renderCategories(){
+  const host = document.getElementById('categoryTree');
+  host.innerHTML = Object.entries(db.categories).map(([parent, children])=>{
+    return `<div class="tree-parent">${parent}</div>` + children.map(c=>{
+      const count = db.expenses.filter(e=>e.category===c).length;
+      return `<div class="tree-child"><span>${c}</span><span class="cnt">${count} expense${count===1?'':'s'}</span></div>`;
+    }).join('');
+  }).join('');
+}
+
+/* ================= REPORTS ================= */
+function renderReports(){
+  const exps = db.expenses;
+  const wrap = (rows, emptyMsg) => rows.length ? rows.join('') : `<div class="hint" style="color:var(--ink-soft);font-size:13px;">${emptyMsg}</div>`;
+
+  // by category
+  const byCat = {};
+  exps.forEach(e=> byCat[e.category] = (byCat[e.category]||0)+e.total);
+  document.getElementById('repByCategory').innerHTML = wrap(
+    Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="report-row"><span>${k}</span><span class="amt">${fmt(v)}</span></div>`),
+    'No data yet.'
+  );
+
+  // by supplier
+  const bySup = {};
+  exps.forEach(e=>{ const k = e.supplierName || 'No supplier'; bySup[k] = (bySup[k]||0)+e.total; });
+  document.getElementById('repBySupplier').innerHTML = wrap(
+    Object.entries(bySup).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="report-row"><span>${k}</span><span class="amt">${fmt(v)}</span></div>`),
+    'No data yet.'
+  );
+
+  // paid vs unpaid
+  const paid = exps.filter(e=>e.paymentStatus==='Paid').reduce((s,e)=>s+e.total,0);
+  const unpaid = exps.filter(e=>e.paymentStatus==='Unpaid').reduce((s,e)=>s+e.total,0);
+  document.getElementById('repPaidUnpaid').innerHTML = exps.length ? `
+    <div class="report-row"><span>Paid</span><span class="amt">${fmt(paid)}</span></div>
+    <div class="report-row"><span>Unpaid</span><span class="amt">${fmt(unpaid)}</span></div>
+  ` : `<div class="hint" style="color:var(--ink-soft);font-size:13px;">No data yet.</div>`;
+
+  // vat
+  const vatByRate = {};
+  exps.forEach(e=>{ if(e.taxAmount>0){ const k='VAT '+e.taxRate+'%'; vatByRate[k]=(vatByRate[k]||0)+e.taxAmount; } });
+  document.getElementById('repVat').innerHTML = wrap(
+    Object.entries(vatByRate).map(([k,v])=>`<div class="report-row"><span>${k}</span><span class="amt">${fmt(v)}</span></div>`),
+    'No taxable expenses recorded yet.'
+  );
+}
+
+/* ================= FORM (NEW / EDIT) ================= */
+function populateAccountSelect(){
+  const sel = document.getElementById('f_account');
+  sel.innerHTML = '<option value="">Select account...</option>' + allCategoryNames().map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+function populateSupplierSelect(){
+  const sel = document.getElementById('f_supplier');
+  sel.innerHTML = '<option value="">Select supplier...</option>' + db.suppliers.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+}
+
+function openNewExpense(){
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'New Expense';
+  populateAccountSelect();
+  populateSupplierSelect();
+  document.getElementById('expenseForm').reset();
+  document.getElementById('f_date').value = todayISO();
+  document.getElementById('f_expno').value = 'EXP-' + String(db.nextExpNo).padStart(5,'0') + ' (auto)';
+  document.getElementById('f_tax').value = '16';
+  document.getElementById('uploadBox').textContent = 'Click to attach a receipt (filename only, stored locally)';
+  document.getElementById('uploadBox').classList.remove('has-file');
+  document.getElementById('uploadBox').dataset.filename = '';
+  recalcTotals();
+  openPanel('formPanel');
+}
+
+function openEditExpense(id){
+  const e = db.expenses.find(x=>x.id===id);
+  if(!e) return;
+  editingId = id;
+  document.getElementById('formTitle').textContent = 'Edit Expense';
+  populateAccountSelect();
+  populateSupplierSelect();
+  document.getElementById('f_date').value = e.date;
+  document.getElementById('f_expno').value = e.expNo;
+  document.getElementById('f_supplier').value = e.supplierId || '';
+  document.getElementById('f_account').value = e.category;
+  document.getElementById('f_desc').value = e.description;
+  document.getElementById('f_ref').value = e.reference || '';
+  document.getElementById('f_currency').value = e.currency || 'KES';
+  document.getElementById('f_amount').value = e.amount;
+  document.getElementById('f_tax').value = String(e.taxRate);
+  document.getElementById('f_payaccount').value = e.paymentAccount;
+  document.getElementById('f_paystatus').value = e.paymentStatus;
+  document.getElementById('f_notes').value = e.notes || '';
+  const ub = document.getElementById('uploadBox');
+  if(e.attachmentName){ ub.textContent = '📎 ' + e.attachmentName; ub.classList.add('has-file'); ub.dataset.filename = e.attachmentName; }
+  else { ub.textContent = 'Click to attach a receipt (filename only, stored locally)'; ub.classList.remove('has-file'); ub.dataset.filename=''; }
+  recalcTotals();
+  openPanel('formPanel');
+}
+
+function onAttachChange(){
+  const f = document.getElementById('f_attachment').files[0];
+  const ub = document.getElementById('uploadBox');
+  if(f){ ub.textContent = '📎 ' + f.name; ub.classList.add('has-file'); ub.dataset.filename = f.name; }
+}
+
+['f_amount','f_tax'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', recalcTotals);
+});
+function recalcTotals(){
+  const amount = parseFloat(document.getElementById('f_amount').value) || 0;
+  const rate = parseFloat(document.getElementById('f_tax').value) || 0;
+  const taxAmt = amount * rate / 100;
+  document.getElementById('f_taxamt').value = fmtPlain(taxAmt);
+  document.getElementById('f_total').value = fmtPlain(amount + taxAmt);
+}
+
+function saveExpense(statusIfNew){
+  const date = document.getElementById('f_date').value;
+  const account = document.getElementById('f_account').value;
+  const desc = document.getElementById('f_desc').value.trim();
+  const amount = parseFloat(document.getElementById('f_amount').value);
+
+  if(!date || !account || !desc || isNaN(amount)){
+    showToast('Please fill in date, account, description and amount');
+    return;
+  }
+
+  const rate = parseFloat(document.getElementById('f_tax').value) || 0;
+  const taxAmount = Math.round((amount * rate / 100) * 100) / 100;
+  const total = Math.round((amount + taxAmount) * 100) / 100;
+  const supplierId = document.getElementById('f_supplier').value;
+  const supplier = db.suppliers.find(s=>s.id===supplierId);
+
+  if(editingId){
+    const e = db.expenses.find(x=>x.id===editingId);
+    Object.assign(e, {
+      date, category:account, description:desc,
+      reference: document.getElementById('f_ref').value.trim(),
+      currency: document.getElementById('f_currency').value,
+      amount, taxRate:rate, taxAmount, total,
+      supplierId: supplierId||null, supplierName: supplier?supplier.name:'',
+      paymentAccount: document.getElementById('f_payaccount').value,
+      paymentStatus: document.getElementById('f_paystatus').value,
+      notes: document.getElementById('f_notes').value.trim(),
+      attachmentName: document.getElementById('uploadBox').dataset.filename || ''
+    });
+    if(e.paymentStatus==='Paid') e.status='Paid';
+    showToast('Expense updated');
+  } else {
+    const expNo = 'EXP-' + String(db.nextExpNo).padStart(5,'0');
+    db.nextExpNo++;
+    const paymentStatus = document.getElementById('f_paystatus').value;
+    db.expenses.push({
+      id: 'exp_'+Date.now(),
+      expNo, date, category:account, description:desc,
+      reference: document.getElementById('f_ref').value.trim(),
+      currency: document.getElementById('f_currency').value,
+      amount, taxRate:rate, taxAmount, total,
+      supplierId: supplierId||null, supplierName: supplier?supplier.name:'',
+      paymentAccount: document.getElementById('f_payaccount').value,
+      paymentStatus,
+      status: paymentStatus==='Paid' ? 'Paid' : statusIfNew,
+      notes: document.getElementById('f_notes').value.trim(),
+      attachmentName: document.getElementById('uploadBox').dataset.filename || ''
+    });
+    showToast(statusIfNew==='Draft' ? 'Draft saved' : 'Expense submitted');
+  }
+
+  saveDB();
+  closeAllPanels();
+  renderExpenseTable();
+  renderDashboard();
+  renderCategories();
+}
+
+/* ================= DETAIL PANEL ================= */
+const STATUS_FLOW = ['Draft','Submitted','Pending Approval','Approved','Posted','Paid'];
+
+function openDetail(id){
+  currentDetailId = id;
+  const e = db.expenses.find(x=>x.id===id);
+  if(!e) return;
+
+  document.getElementById('detStatusPill').className = 'status-pill ' + statusClass(e.status);
+  document.getElementById('detStatusPill').textContent = e.status;
+  document.getElementById('detExpNo').textContent = e.expNo;
+  document.getElementById('detExpDesc').textContent = e.supplierName || 'No supplier';
+  document.getElementById('detAmount').textContent = fmt(e.total);
+
+  document.getElementById('detGrid').innerHTML = `
+    <div><div class="k">Date</div><div class="v">${fmtDate(e.date)}</div></div>
+    <div><div class="k">Account</div><div class="v">${e.category}</div></div>
+    <div><div class="k">Supplier</div><div class="v">${e.supplierName||'—'}</div></div>
+    <div><div class="k">Payment Account</div><div class="v">${e.paymentAccount}</div></div>
+    <div><div class="k">Tax</div><div class="v">${e.taxRate>0?'VAT '+e.taxRate+'%':'No tax'}</div></div>
+    <div><div class="k">Tax Amount</div><div class="v">${fmt(e.taxAmount)}</div></div>
+    <div><div class="k">Payment Status</div><div class="v">${e.paymentStatus}</div></div>
+    <div><div class="k">Reference</div><div class="v">${e.reference||'—'}</div></div>
+  `;
+
+  const net = e.amount;
+  document.getElementById('acctTable').innerHTML = `
+    <tr><td>Debit</td><td>${e.category}</td><td class="num">${fmtPlain(net)}</td></tr>
+    ${e.taxAmount>0?`<tr><td>Debit</td><td>VAT Input</td><td class="num">${fmtPlain(e.taxAmount)}</td></tr>`:''}
+    <tr><td>Credit</td><td>${e.paymentStatus==='Paid'?e.paymentAccount:'Accounts Payable'}</td><td class="num">${fmtPlain(e.total)}</td></tr>
+  `;
+
+  document.getElementById('detAttachment').textContent = e.attachmentName ? '📎 '+e.attachmentName : 'No attachment';
+  document.getElementById('detNotes').textContent = e.notes || 'No notes added.';
+
+  const nextIdx = STATUS_FLOW.indexOf(e.status);
+  const advBtn = document.getElementById('advanceBtn');
+  if(e.status==='Rejected' || nextIdx===-1 || nextIdx===STATUS_FLOW.length-1){
+    advBtn.style.display='none';
+  } else {
+    advBtn.style.display='inline-flex';
+    advBtn.textContent = 'Mark as ' + STATUS_FLOW[nextIdx+1];
+  }
+
+  openPanel('detailPanel');
+}
+
+function advanceStatus(){
+  const e = db.expenses.find(x=>x.id===currentDetailId);
+  if(!e) return;
+  const idx = STATUS_FLOW.indexOf(e.status);
+  if(idx>-1 && idx<STATUS_FLOW.length-1){
+    e.status = STATUS_FLOW[idx+1];
+    if(e.status==='Paid') e.paymentStatus='Paid';
+    saveDB();
+    openDetail(e.id);
+    renderExpenseTable();
+    renderDashboard();
+    showToast('Status updated to ' + e.status);
+  }
+}
+
+function editCurrentExpense(){ closeAllPanels(); openEditExpense(currentDetailId); }
+
+function duplicateCurrentExpense(){
+  const e = db.expenses.find(x=>x.id===currentDetailId);
+  if(!e) return;
+  const expNo = 'EXP-' + String(db.nextExpNo).padStart(5,'0');
+  db.nextExpNo++;
+  const copy = {...e, id:'exp_'+Date.now(), expNo, status:'Draft', paymentStatus:'Unpaid', date: todayISO()};
+  db.expenses.push(copy);
+  saveDB();
+  closeAllPanels();
+  renderExpenseTable();
+  renderDashboard();
+  showToast('Expense duplicated as ' + expNo);
+}
+
+function deleteCurrentExpense(){
+  if(!confirm('Delete this expense? This cannot be undone.')) return;
+  db.expenses = db.expenses.filter(x=>x.id!==currentDetailId);
+  saveDB();
+  closeAllPanels();
+  renderExpenseTable();
+  renderDashboard();
+  renderCategories();
+  showToast('Expense deleted');
+}
+
+/* ================= PANELS ================= */
+function openPanel(id){
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById(id).classList.add('show');
+}
+function closeAllPanels(){
+  document.getElementById('overlay').classList.remove('show');
+  ['detailPanel','formPanel','supplierPanel'].forEach(id=>document.getElementById(id).classList.remove('show'));
+}
+
+/* ================= EXPORT ================= */
+function exportCSV(){
+  if(db.expenses.length===0){ showToast('Nothing to export yet'); return; }
+  const headers = ['Date','Expense #','Description','Supplier','Category','Tax Rate','Amount','Tax Amount','Total','Status','Payment Status'];
+  const rows = db.expenses.map(e=>[e.date,e.expNo,e.description,e.supplierName,e.category,e.taxRate+'%',e.amount,e.taxAmount,e.total,e.status,e.paymentStatus]);
+  const csv = [headers, ...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'acacia-expenses.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ================= INIT ================= */
+initUser();
+renderDashboard();
+renderExpenseTable();
+renderSuppliers();
+renderCategories();
+renderReports();
 </script>
 </body>
 </html>
