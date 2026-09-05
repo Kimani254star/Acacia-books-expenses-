@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acacia — Expenses</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --ink:#1E2A22;
@@ -22,16 +20,47 @@
   --rust-soft:#F3DCD3;
   --blue-soft:#DCE4E0;
   --radius:3px;
-  --sans:'Space Grotesk', sans-serif;
-  --serif:'Fraunces', serif;
+  --sans:'Cambria', Georgia, serif;
+  --serif:'Cambria', Georgia, serif;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);}
 button{font-family:inherit;}
 input,select,textarea{font-family:inherit;}
 
-/* ---------- Shell ---------- */
-.shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh;}
+/* ---------- Auth screen ---------- */
+.shell{display:none;grid-template-columns:236px 1fr;min-height:100vh;}
+.shell.ready{display:grid;}
+#authScreen{position:fixed;inset:0;z-index:500;background:var(--green-deep);display:flex;align-items:stretch;justify-content:center;overflow-y:auto;}
+.auth-wrap{display:flex;width:100%;max-width:920px;margin:auto;background:var(--panel);border-radius:4px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);min-height:520px;}
+@media(max-width:760px){ .auth-wrap{flex-direction:column;min-height:0;max-width:440px;margin:24px auto;} }
+.auth-side{flex:1;background:linear-gradient(160deg, var(--green-deep) 0%, #24391F 55%, #1C2E19 100%);color:#EDE9DC;padding:44px 38px;display:flex;flex-direction:column;justify-content:space-between;}
+@media(max-width:760px){ .auth-side{padding:28px;} }
+.auth-side .mark{font-family:var(--serif);font-weight:600;font-size:22px;color:#fff;}
+.auth-side .mark .sub{display:block;font-family:var(--sans);font-size:12px;color:#C7C2AF;margin-top:2px;font-weight:400;}
+.auth-side .pitch{font-size:13.5px;line-height:1.7;color:#CBD9CF;margin-top:20px;max-width:280px;}
+.auth-side .pitch-list{margin-top:20px;display:flex;flex-direction:column;gap:9px;font-size:12.5px;color:#DCE7DE;}
+.auth-side .pitch-list div{display:flex;gap:8px;align-items:flex-start;}
+.auth-side .foot{font-size:11px;color:#8AA093;}
+.auth-form-panel{flex:1;padding:44px 42px;display:flex;flex-direction:column;justify-content:center;}
+@media(max-width:760px){ .auth-form-panel{padding:30px 28px;} }
+.auth-tabs{display:flex;gap:4px;margin-bottom:22px;background:var(--paper);border-radius:6px;padding:4px;}
+.auth-tab{flex:1;text-align:center;padding:8px 0;border-radius:4px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+.auth-tab.active{background:var(--panel);color:var(--green-deep);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.auth-form-panel h2{margin:0 0 4px 0;font-size:20px;font-family:var(--serif);font-weight:600;}
+.auth-form-panel .sub{color:var(--ink-soft);font-size:12.5px;margin-bottom:20px;}
+.auth-error{background:var(--rust-soft);color:var(--rust);font-size:12.5px;padding:9px 12px;border-radius:var(--radius);margin-bottom:13px;display:none;}
+.auth-error.show{display:block;}
+.auth-submit{width:100%;padding:11px 0;margin-top:6px;font-size:13.5px;justify-content:center;}
+.auth-switch{font-size:12.5px;color:var(--ink-soft);text-align:center;margin-top:16px;}
+.auth-switch a{color:var(--green-deep);font-weight:600;cursor:pointer;text-decoration:none;}
+.auth-switch a:hover{text-decoration:underline;}
+
+.user-chip{position:relative;cursor:pointer;}
+.user-menu{position:absolute;top:38px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(0,0,0,.14);min-width:150px;display:none;z-index:20;overflow:hidden;}
+.user-menu.open{display:block;}
+.user-menu-item{padding:9px 14px;font-size:13px;cursor:pointer;}
+.user-menu-item:hover{background:var(--paper);}
 
 .sidebar{background:var(--green-deep);color:#EDE9DC;padding:22px 0 20px;display:flex;flex-direction:column;}
 .brand{padding:0 22px 20px;border-bottom:1px solid rgba(237,233,220,.14);margin-bottom:16px;}
@@ -182,6 +211,52 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
 </head>
 <body>
 
+<div id="authScreen">
+  <div class="auth-wrap">
+    <div class="auth-side">
+      <div>
+        <div class="mark">Acacia<span class="sub">EXPENSES</span></div>
+        <div class="pitch">Track spending, route approvals, and keep every expense organised in one place.</div>
+        <div class="pitch-list">
+          <div>◆ Log and categorise every expense</div>
+          <div>◆ Controlled Draft → Approved → Paid workflow</div>
+          <div>◆ Supplier and VAT-ready reporting</div>
+          <div>◆ Dashboards for spend at a glance</div>
+        </div>
+      </div>
+      <div class="foot">Your expense data is kept private to your account.</div>
+    </div>
+    <div class="auth-form-panel">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabLoginBtn" onclick="switchAuthTab('login')">Log In</div>
+        <div class="auth-tab" id="tabRegisterBtn" onclick="switchAuthTab('register')">Create Account</div>
+      </div>
+
+      <div id="loginPane">
+        <h2>Welcome back</h2>
+        <div class="sub">Log in to your Acacia Expenses account.</div>
+        <div class="auth-error" id="loginError"></div>
+        <div class="field"><label>Email address</label><input id="loginEmail" type="email" autocomplete="username" placeholder="you@company.co.ke"></div>
+        <div class="field"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+        <button class="btn btn-primary auth-submit" onclick="handleLogin()">Log In</button>
+        <div class="auth-switch">Don't have an account? <a onclick="switchAuthTab('register')">Create one</a></div>
+      </div>
+
+      <div id="registerPane" style="display:none;">
+        <h2>Create your account</h2>
+        <div class="sub">Set up Acacia Expenses for your company.</div>
+        <div class="auth-error" id="registerError"></div>
+        <div class="field"><label>Company name</label><input id="regCompany" placeholder="e.g. Acacia Trading Ltd"></div>
+        <div class="field"><label>Your name</label><input id="regName" placeholder="e.g. Wanjiru Kariuki"></div>
+        <div class="field"><label>Email address</label><input id="regEmail" type="email" autocomplete="username" placeholder="you@company.co.ke"></div>
+        <div class="field"><label>Password</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+        <button class="btn btn-primary auth-submit" onclick="handleRegister()">Create Account</button>
+        <div class="auth-switch">Already have an account? <a onclick="switchAuthTab('login')">Log in</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="shell">
   <!-- SIDEBAR -->
   <aside class="sidebar">
@@ -215,6 +290,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
     <div class="nav-group">
       <div class="nav-label">Settings</div>
       <div class="nav-item" data-view="categories"><span class="nav-dot"></span>Categories</div>
+      <div class="nav-item" data-view="connect"><span class="nav-dot"></span>Connect</div>
     </div>
   </aside>
 
@@ -227,9 +303,13 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
       </div>
       <div class="topbar-right">
         <span style="color:var(--ink-soft);cursor:default;">🔔</span>
-        <div class="user-chip">
+        <div class="user-chip" onclick="toggleUserMenu(event)">
           <div class="user-badge" id="userBadge">?</div>
           <span id="userName">—</span>
+          <div class="user-menu" id="userMenuPanel">
+            <div class="user-menu-item" id="userMenuCompany" style="color:var(--ink-soft);font-size:11.5px;border-bottom:1px solid var(--line);">–</div>
+            <div class="user-menu-item" onclick="handleLogout()">Log out</div>
+          </div>
         </div>
       </div>
     </div>
@@ -356,6 +436,17 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <div class="tree" id="categoryTree"></div>
     </div>
 
+    <!-- CONNECT WITH BOOKS -->
+    <div class="view" id="view-connect">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Connect with Books</div>
+          <div class="view-sub">Link this account to your Acacia Payroll / Books company</div>
+        </div>
+      </div>
+      <div id="connectStatusCard"></div>
+    </div>
+
   </div>
 </div>
 
@@ -478,7 +569,11 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
 
 <script>
 /* ================= DATA LAYER ================= */
-const DB_KEY = 'acacia_expenses_db_v1';
+const USERS_KEY = 'acacia-payroll-users';
+const SESSION_KEY = 'acacia-payroll-session';
+function dataKeyFor(companyId){ return 'acacia_expenses_db_v1_' + companyId; }
+function initials(name){ return (name||'').split(' ').filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join(''); }
+function uid(prefix){ return prefix + '-' + Math.random().toString(36).slice(2,9); }
 
 const DEFAULT_CATEGORIES = {
   "Operating Expenses": [
@@ -491,7 +586,6 @@ const DEFAULT_CATEGORIES = {
 
 function defaultDB(){
   return {
-    user: "Joseph",
     expenses: [],
     suppliers: [],
     categories: DEFAULT_CATEGORIES,
@@ -499,20 +593,108 @@ function defaultDB(){
   };
 }
 
-function loadDB(){
+function loadDB(companyId){
   try{
-    const raw = localStorage.getItem(DB_KEY);
-    if(!raw) return defaultDB();
+    const raw = localStorage.getItem(dataKeyFor(companyId));
+    if(!raw) throw new Error('none');
     const parsed = JSON.parse(raw);
     if(!parsed.categories) parsed.categories = DEFAULT_CATEGORIES;
     return parsed;
-  }catch(e){ return defaultDB(); }
+  }catch(e){
+    const blank = defaultDB();
+    try{ localStorage.setItem(dataKeyFor(companyId), JSON.stringify(blank)); }catch(e2){ console.error('init save failed', e2); }
+    return blank;
+  }
 }
-function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function saveDB(){ if(!CURRENT_USER) return; localStorage.setItem(dataKeyFor(CURRENT_USER.companyId), JSON.stringify(db)); }
 
-let db = loadDB();
+/* ---------------------------- Auth ---------------------------- */
+let db = null;
+let CURRENT_USER = null;
 let currentDetailId = null;
 let editingId = null;
+
+function getUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); }catch(e){ return []; } }
+function saveUsers(list){ try{ localStorage.setItem(USERS_KEY, JSON.stringify(list)); }catch(e){ console.error(e); } }
+function getSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }catch(e){ return null; } }
+function setSession(user){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify({companyId:user.companyId, company:user.company, name:user.name, email:user.email})); }catch(e){ console.error(e); } }
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){ /* nothing to clear */ } }
+
+function switchAuthTab(which){
+  document.getElementById('tabLoginBtn').classList.toggle('active', which==='login');
+  document.getElementById('tabRegisterBtn').classList.toggle('active', which==='register');
+  document.getElementById('loginPane').style.display = which==='login' ? 'block' : 'none';
+  document.getElementById('registerPane').style.display = which==='register' ? 'block' : 'none';
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('registerError').classList.remove('show');
+}
+function showAuthError(id, msg){
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function handleRegister(){
+  const company = document.getElementById('regCompany').value.trim();
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim().toLowerCase();
+  const password = document.getElementById('regPassword').value;
+  if(!company || !name || !email || !password){ showAuthError('registerError','Please fill in every field.'); return; }
+  if(password.length < 6){ showAuthError('registerError','Password must be at least 6 characters.'); return; }
+  const users = getUsers();
+  if(users.some(u=>u.email===email)){ showAuthError('registerError','An account with that email already exists.'); return; }
+  const companyId = uid('co');
+  const user = { companyId, company, name, email, password };
+  users.push(user);
+  saveUsers(users);
+  setSession(user);
+  enterApp(user);
+}
+function handleLogin(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  if(!email || !password){ showAuthError('loginError','Please enter your email and password.'); return; }
+  const users = getUsers();
+  const user = users.find(u=>u.email===email && u.password===password);
+  if(!user){ showAuthError('loginError','That email and password combination was not found.'); return; }
+  setSession(user);
+  enterApp(user);
+}
+function handleLogout(){
+  clearSession();
+  CURRENT_USER = null;
+  db = null;
+  document.querySelector('.shell').classList.remove('ready');
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  switchAuthTab('login');
+}
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('userMenuPanel').classList.toggle('open');
+}
+document.addEventListener('click', ()=>{ const m=document.getElementById('userMenuPanel'); if(m) m.classList.remove('open'); });
+
+function enterApp(user){
+  CURRENT_USER = user;
+  db = loadDB(user.companyId);
+  document.getElementById('authScreen').style.display = 'none';
+  document.querySelector('.shell').classList.add('ready');
+  initUser();
+  renderDashboard();
+  renderExpenseTable();
+  renderSuppliers();
+  renderCategories();
+  renderReports();
+}
+function boot(){
+  const session = getSession();
+  if(session && session.companyId){
+    enterApp(session);
+  }else{
+    document.getElementById('authScreen').style.display = 'flex';
+  }
+}
 
 /* ================= HELPERS ================= */
 function fmt(n){
@@ -556,6 +738,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item=>{
     if(v==='dashboard') renderDashboard();
     if(v==='reports') renderReports();
     if(v==='categories') renderCategories();
+    if(v==='connect') renderConnectStatus();
     if(v==='suppliers') renderSuppliers();
   });
 });
@@ -570,8 +753,10 @@ document.getElementById('globalSearch').addEventListener('input', (e)=>{
 
 /* ================= INIT USER ================= */
 function initUser(){
-  document.getElementById('userName').textContent = db.user;
-  document.getElementById('userBadge').textContent = db.user.slice(0,1).toUpperCase();
+  if(!CURRENT_USER) return;
+  document.getElementById('userName').textContent = CURRENT_USER.name;
+  document.getElementById('userBadge').textContent = initials(CURRENT_USER.name) || CURRENT_USER.name.slice(0,1).toUpperCase();
+  document.getElementById('userMenuCompany').textContent = CURRENT_USER.company;
 }
 
 /* ================= DASHBOARD ================= */
@@ -749,6 +934,98 @@ function renderCategories(){
       return `<div class="tree-child"><span>${c}</span><span class="cnt">${count} expense${count===1?'':'s'}</span></div>`;
     }).join('');
   }).join('');
+}
+
+/* ================= CONNECT WITH BOOKS ================= */
+function booksLinkKey(){ return 'acacia-expenses-books-link_' + CURRENT_USER.companyId; }
+function getLinkedBooksId(){
+  try{
+    const linked = localStorage.getItem(booksLinkKey());
+    if(linked) return linked;
+  }catch(e){}
+  return CURRENT_USER.companyId;
+}
+function getBooksStateForId(id){
+  if(!id) return null;
+  try{
+    const raw = localStorage.getItem('acacia-payroll-state_' + id);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function getBooksState(){
+  if(!CURRENT_USER) return null;
+  return getBooksStateForId(getLinkedBooksId());
+}
+function connectBooksWithId(){
+  const input = document.getElementById('booksIdInput');
+  const id = input.value.trim();
+  const errEl = document.getElementById('connectIdError');
+  if(!id){ errEl.textContent = 'Enter a Company ID.'; errEl.classList.add('show'); return; }
+  const books = getBooksStateForId(id);
+  if(!books){
+    errEl.textContent = 'No Books account was found with that Company ID. Ask your Books/Payroll admin for the correct ID, or make sure that company has set up Payroll.';
+    errEl.classList.add('show');
+    return;
+  }
+  try{ localStorage.setItem(booksLinkKey(), id); }catch(e){}
+  showToast('Connected to Books');
+  renderConnectStatus();
+}
+function disconnectBooks(){
+  try{ localStorage.removeItem(booksLinkKey()); }catch(e){}
+  renderConnectStatus();
+}
+function renderConnectStatus(){
+  const host = document.getElementById('connectStatusCard');
+  const linkedId = getLinkedBooksId();
+  const isManualLink = linkedId !== CURRENT_USER.companyId;
+  const books = getBooksState();
+  if(!books){
+    host.innerHTML = `<div class="empty-state">
+      <div class="title">Not connected</div>
+      <div class="hint">This account (${CURRENT_USER.company}) doesn't have a Books account yet, so it can't connect automatically. If your company already has an Acacia Payroll / Books account, enter its Company ID below to link it — your Books admin can find this under Payroll Settings → Company.</div>
+      <div class="field" style="max-width:320px;margin:14px auto 0;text-align:left;">
+        <label>Books Company ID</label>
+        <input id="booksIdInput" placeholder="e.g. co-4f8x2p1">
+      </div>
+      <div class="auth-error" id="connectIdError" style="max-width:320px;margin:8px auto 0;"></div>
+      <button class="btn btn-primary" style="margin-top:6px;" onclick="connectBooksWithId()">Connect</button>
+    </div>`;
+    return;
+  }
+  const c = books.company || {};
+  const acc = books.payAccounts || {};
+  const empCount = (books.employees||[]).length;
+  const runCount = (books.payRuns||[]).length;
+  host.innerHTML = `
+    <div class="panel-box" style="margin-bottom:16px;">
+      <h3 style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+        <span><span class="status-pill status-paid">Connected</span> ${c.name || CURRENT_USER.company}</span>
+        ${isManualLink ? '<button class="btn btn-sm btn-ghost" onclick="disconnectBooks()">Disconnect</button>' : ''}
+      </h3>
+      <div class="det-grid">
+        <div><div class="k">Company ID</div><div class="v">${linkedId}</div></div>
+        <div><div class="k">KRA PIN</div><div class="v">${c.kraPin || '—'}</div></div>
+        <div><div class="k">Currency</div><div class="v">${c.currency || '—'}</div></div>
+        <div><div class="k">Employees</div><div class="v">${empCount}</div></div>
+        <div><div class="k">Pay Runs</div><div class="v">${runCount}</div></div>
+      </div>
+    </div>
+    <div class="panel-box">
+      <h3>Chart of Accounts (from Books)</h3>
+      <table class="acct-table">
+        <tr><td>Salary Expense</td><td>${acc.salaryExpense || '—'}</td></tr>
+        <tr><td>Statutory Expense</td><td>${acc.statutoryExpense || '—'}</td></tr>
+        <tr><td>PAYE Payable</td><td>${acc.payePayable || '—'}</td></tr>
+        <tr><td>NSSF Payable</td><td>${acc.nssfPayable || '—'}</td></tr>
+        <tr><td>SHIF Payable</td><td>${acc.shifPayable || '—'}</td></tr>
+        <tr><td>Net Salaries Payable</td><td>${acc.netPayable || '—'}</td></tr>
+        <tr><td>Bank</td><td>${acc.bank || '—'}</td></tr>
+      </table>
+      <div class="view-sub" style="margin-top:12px;">Read-only, pulled directly from your Acacia Payroll company settings.</div>
+    </div>
+  `;
 }
 
 /* ================= REPORTS ================= */
@@ -1030,12 +1307,7 @@ function exportCSV(){
 }
 
 /* ================= INIT ================= */
-initUser();
-renderDashboard();
-renderExpenseTable();
-renderSuppliers();
-renderCategories();
-renderReports();
+boot();
 </script>
 </body>
 </html>
