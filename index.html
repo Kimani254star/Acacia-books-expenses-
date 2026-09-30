@@ -207,9 +207,788 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
   .dash-row, .report-grid{grid-template-columns:1fr;}
   .form-grid{grid-template-columns:1fr;}
 }
+/* ==== Home page (Books-style) ======================================= */
+#homePage{--hp-bg:#fff;--hp-alt:#f8fafc;--hp-card:#fff;--hp-line:#e2e8f0;--hp-soft:#f1f5f9;--hp-ink:#0f172a;--hp-text:#475569;--hp-muted:#64748b;--hp-accent:#2563eb;--hp-accent-d:#1d4ed8;--hp-accent-soft:#dbeafe;--hp-accent-faint:#eff6ff;--hp-accent-light:#60a5fa;--hp-head:rgba(255,255,255,.9);--hp-input:#f8fafc;background:var(--hp-bg);color:var(--hp-text);line-height:1.5;overflow-x:hidden;}
+#homePage.hp-dark{--hp-bg:#0b1220;--hp-alt:#0f172a;--hp-card:#111a2e;--hp-line:#1e293b;--hp-soft:#1e293b;--hp-ink:#f1f5f9;--hp-text:#cbd5e1;--hp-muted:#94a3b8;--hp-accent-soft:rgba(37,99,235,.22);--hp-accent-faint:rgba(37,99,235,.14);--hp-head:rgba(11,18,32,.9);--hp-input:#0b1220;}
+#homePage *{box-sizing:border-box;}
+#homePage a{text-decoration:none;color:inherit;}
+#homePage ul{list-style:none;margin:0;padding:0;}
+#homePage h1,#homePage h2,#homePage h3,#homePage h4,#homePage p{margin:0;}
+#homePage button{cursor:pointer;font:inherit;}
+#homePage :focus-visible{outline:3px solid var(--hp-accent-light);outline-offset:3px;border-radius:6px;}
+/* Font Awesome needs its own font-family; the hub forces Cambria on everything */
+#homePage i.fa-solid,#homePage i.fa-regular{font-family:"Font Awesome 6 Free" !important;}
+#homePage i.fa-solid{font-weight:900;}
+#homePage i.fa-regular{font-weight:400;}
+
+/* Header */
+#homePage .hp-header{position:fixed;top:0;left:0;width:100%;height:80px;background:var(--hp-head);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:space-between;padding:0 5%;z-index:1000;border-bottom:1px solid var(--hp-soft);}
+#homePage .hp-logo{display:flex;align-items:center;gap:12px;}
+#homePage .hp-logo-mark{width:44px;height:44px;border-radius:10px;background:var(--hp-accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;}
+#homePage .hp-logo h2{font-size:22px;font-weight:800;color:var(--hp-ink);letter-spacing:-.5px;line-height:1.2;}
+#homePage .hp-logo span{display:block;font-size:11px;font-weight:500;color:var(--hp-muted);text-transform:uppercase;letter-spacing:.5px;}
+#homePage .hp-nav ul{display:flex;align-items:center;gap:32px;}
+#homePage .hp-nav a{font-size:15px;font-weight:500;color:var(--hp-text);transition:color .2s;}
+#homePage .hp-nav a:hover{color:var(--hp-accent);}
+#homePage .hp-actions{display:flex;align-items:center;gap:16px;}
+#homePage .hp-theme{background:none;border:1px solid var(--hp-line);color:var(--hp-text);width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;transition:.2s;}
+#homePage .hp-theme:hover{border-color:var(--hp-accent);color:var(--hp-accent);}
+#homePage .hp-theme .hp-sun{display:none;}
+#homePage.hp-dark .hp-theme .hp-sun{display:inline;}
+#homePage.hp-dark .hp-theme .hp-moon{display:none;}
+#homePage .hp-signin{background:none;border:0;font-size:15px;font-weight:600;color:var(--hp-ink);padding:10px 20px;transition:.2s;}
+#homePage .hp-signin:hover{color:var(--hp-accent);}
+#homePage .hp-getstarted{padding:12px 24px;border-radius:8px;background:var(--hp-accent);color:#fff !important;font-size:15px;font-weight:600;box-shadow:0 4px 12px rgba(37,99,235,.2);transition:.2s;}
+#homePage .hp-getstarted:hover{background:var(--hp-accent-d);transform:translateY(-1px);}
+#homePage .hp-burger{display:none;background:none;border:1px solid var(--hp-line);color:var(--hp-ink);width:36px;height:36px;border-radius:8px;align-items:center;justify-content:center;}
+
+/* Hero */
+#homePage .hp-hero{margin-top:80px;min-height:85vh;display:flex;align-items:center;justify-content:space-between;padding:80px 5%;position:relative;overflow:hidden;background:#0f172a;}
+#homePage .hp-slides{position:absolute;inset:0;z-index:1;}
+#homePage .hp-slide{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0;transition:opacity 1.2s ease-in-out;}
+#homePage .hp-slide.active{opacity:1;}
+#homePage .hp-slides::before{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(15,23,42,.85) 40%,rgba(15,23,42,.5) 100%);z-index:2;}
+#homePage .hp-left{width:50%;position:relative;z-index:3;}
+#homePage .hp-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.3);border-radius:99px;font-size:13px;font-weight:600;color:#60a5fa;margin-bottom:24px;}
+#homePage .hp-left h1{font-size:54px;font-weight:800;line-height:1.15;color:#fff;letter-spacing:-1px;margin-bottom:24px;}
+#homePage .hp-left p{font-size:18px;line-height:1.6;color:#cbd5e1;margin-bottom:20px;}
+#homePage .hp-hero-btns{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;}
+#homePage .hp-primary{padding:14px 28px;background:var(--hp-accent);border-radius:8px;color:#fff;font-size:16px;font-weight:600;box-shadow:0 10px 20px rgba(37,99,235,.15);transition:.2s;}
+#homePage .hp-primary:hover{background:var(--hp-accent-d);transform:translateY(-2px);}
+#homePage .hp-secondary{padding:14px 28px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);border-radius:8px;color:#fff;font-size:16px;font-weight:600;backdrop-filter:blur(5px);transition:.2s;}
+#homePage .hp-secondary:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4);}
+#homePage .hp-right{width:44%;display:flex;justify-content:center;position:relative;z-index:3;}
+#homePage .hp-preview{width:100%;max-width:480px;background:rgba(30,41,59,.7);backdrop-filter:blur(12px);border-radius:16px;padding:32px;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);}
+#homePage .hp-preview h2{font-size:22px;color:#fff;margin-bottom:24px;font-weight:700;}
+#homePage .hp-item{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px;background:rgba(15,23,42,.6);border-radius:8px;margin-bottom:12px;border:1px solid rgba(255,255,255,.05);}
+#homePage .hp-item:last-child{margin-bottom:0;}
+#homePage .hp-item span{font-size:14px;font-weight:500;color:#94a3b8;}
+#homePage .hp-item strong{font-size:20px;color:#60a5fa;font-weight:700;text-align:right;}
+#homePage .hp-float{position:absolute;background:rgba(30,41,59,.85);backdrop-filter:blur(8px);padding:12px 20px;border-radius:99px;box-shadow:0 10px 25px rgba(0,0,0,.3);font-weight:600;font-size:14px;color:#fff;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:8px;}
+#homePage .hp-float i{color:#60a5fa;}
+#homePage .hp-float1{left:-20px;top:60px;}
+#homePage .hp-float2{right:-20px;bottom:60px;}
+
+/* Sections */
+#homePage .hp-section{padding:100px 5%;scroll-margin-top:80px;}
+#homePage .hp-section-alt{padding:100px 5%;background:var(--hp-alt);border-top:1px solid var(--hp-soft);border-bottom:1px solid var(--hp-soft);scroll-margin-top:80px;}
+#homePage .hp-title{text-align:center;margin-bottom:60px;}
+#homePage .hp-title span,#homePage .hp-pill{display:inline-block;padding:6px 14px;background:var(--hp-accent-soft);color:var(--hp-accent);border-radius:99px;font-size:13px;font-weight:600;margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px;}
+#homePage.hp-dark .hp-title span,#homePage.hp-dark .hp-pill{color:#93c5fd;}
+#homePage .hp-title h2{font-size:38px;font-weight:800;color:var(--hp-ink);margin-bottom:16px;letter-spacing:-.5px;line-height:1.2;}
+#homePage .hp-title p{max-width:700px;margin:auto;font-size:17px;line-height:1.6;color:var(--hp-muted);}
+#homePage .hp-title.left{text-align:left;margin-bottom:24px;}
+#homePage .hp-grid3{max-width:1200px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:32px;}
+#homePage .hp-grid2{max-width:1200px;margin:32px auto 0;display:grid;grid-template-columns:repeat(2,1fr);gap:32px;}
+#homePage .hp-card{background:var(--hp-card);padding:32px;border-radius:12px;border:1px solid var(--hp-line);transition:all .3s;}
+#homePage .hp-card:hover{border-color:var(--hp-accent);box-shadow:0 12px 30px rgba(0,0,0,.04);transform:translateY(-2px);}
+#homePage .hp-card h3{font-size:20px;font-weight:700;color:var(--hp-ink);margin-bottom:12px;}
+#homePage .hp-card p{font-size:15px;line-height:1.6;color:var(--hp-muted);}
+#homePage .hp-icon{width:48px;height:48px;background:var(--hp-accent-faint);color:var(--hp-accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:20px;}
+
+/* Two-column text blocks */
+#homePage .hp-two{max-width:1200px;margin:auto;display:grid;grid-template-columns:1.15fr 1fr;gap:64px;align-items:center;}
+#homePage .hp-text p{font-size:16px;line-height:1.7;color:var(--hp-muted);margin-bottom:20px;}
+#homePage .hp-actions-row{display:flex;gap:14px;margin-top:26px;flex-wrap:wrap;}
+#homePage .hp-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:8px;background:var(--hp-accent);color:#fff;font-weight:600;font-size:15px;border:1px solid var(--hp-accent);transition:.25s;}
+#homePage .hp-btn:hover{background:var(--hp-accent-d);transform:translateY(-1px);}
+#homePage .hp-btn.ghost{background:var(--hp-card);color:var(--hp-ink);border:1px solid var(--hp-line);}
+#homePage .hp-btn.ghost:hover{border-color:var(--hp-accent);color:var(--hp-accent);}
+#homePage .hp-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
+#homePage .hp-stat{background:var(--hp-card);padding:24px;border-radius:12px;border:1px solid var(--hp-line);}
+#homePage .hp-stat h4{font-size:26px;color:var(--hp-accent);font-weight:800;margin-bottom:4px;}
+#homePage .hp-stat p{font-size:14px;color:var(--hp-text);font-weight:500;}
+#homePage .hp-quote{margin-top:24px;padding:26px 28px;background:#0f172a;border-radius:12px;color:#e2e8f0;}
+#homePage.hp-dark .hp-quote{background:#111a2e;border:1px solid var(--hp-line);}
+#homePage .hp-quote i{color:#60a5fa;font-size:20px;margin-bottom:10px;display:block;}
+#homePage .hp-quote p{font-size:16px;line-height:1.7;}
+
+/* Steps */
+#homePage .hp-steps{max-width:1200px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:28px;}
+#homePage .hp-step{background:var(--hp-card);border:1px solid var(--hp-line);border-radius:12px;padding:32px 26px;transition:.3s;}
+#homePage .hp-step:hover{border-color:var(--hp-accent);transform:translateY(-3px);box-shadow:0 14px 30px rgba(0,0,0,.05);}
+#homePage .hp-num{font-size:17px;width:42px;height:42px;border-radius:50%;background:var(--hp-accent);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
+#homePage .hp-step h3{font-size:20px;font-weight:700;color:var(--hp-ink);margin-bottom:10px;}
+#homePage .hp-step p{font-size:15px;line-height:1.6;color:var(--hp-muted);}
+
+/* Work / modules */
+#homePage .hp-feature{max-width:1200px;margin:0 auto 30px;display:grid;grid-template-columns:1fr 1.4fr;gap:0;border-radius:16px;overflow:hidden;background:#0f172a;color:#cbd5e1;}
+#homePage .hp-feature-main{padding:40px;display:flex;flex-direction:column;justify-content:center;}
+#homePage .hp-feature-main h3{font-size:30px;font-weight:800;color:#fff;margin-bottom:14px;}
+#homePage .hp-feature-main p{font-size:16px;line-height:1.7;color:#94a3b8;margin-bottom:24px;}
+#homePage .hp-feature-main .hp-primary{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;font-size:15px;}
+#homePage .hp-feature-side{padding:40px;background:rgba(255,255,255,.03);border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;justify-content:center;gap:10px;}
+#homePage .hp-feature-side h4{font-size:14px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+#homePage .hp-feature-side div{display:flex;align-items:center;gap:10px;font-size:14px;color:#cbd5e1;}
+#homePage .hp-feature-side i{color:#60a5fa;}
+#homePage .hp-modules{max-width:1200px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:30px;}
+#homePage .hp-module{background:var(--hp-card);border-radius:12px;padding:32px;box-shadow:0 4px 6px -1px rgba(0,0,0,.02);transition:all .3s;border:1px solid var(--hp-line);display:flex;flex-direction:column;}
+#homePage .hp-module:hover{transform:translateY(-4px);box-shadow:0 20px 25px -5px rgba(0,0,0,.05);border-color:var(--hp-accent);}
+#homePage .hp-mi{width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px;}
+#homePage .hp-mi.blue{background:#eff6ff;color:#2563eb;}
+#homePage .hp-mi.green{background:#f0fdf4;color:#16a34a;}
+#homePage .hp-mi.orange{background:#fff7ed;color:#ea580c;}
+#homePage .hp-mi.purple{background:#faf5ff;color:#7c3aed;}
+#homePage .hp-mi.cyan{background:#ecfeff;color:#0891b2;}
+#homePage .hp-mi.rose{background:#fff1f2;color:#f43f5e;}
+#homePage.hp-dark .hp-mi{background:rgba(255,255,255,.06);}
+#homePage .hp-module h3{font-size:22px;color:var(--hp-ink);margin-bottom:12px;font-weight:700;}
+#homePage .hp-module p{font-size:15px;line-height:1.6;color:var(--hp-muted);margin-bottom:20px;}
+#homePage .hp-chips{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:24px;}
+#homePage .hp-chips div{background:var(--hp-alt);padding:8px 12px;border-radius:6px;font-size:13px;font-weight:500;color:var(--hp-text);border:1px solid var(--hp-soft);}
+#homePage .hp-learn{margin-top:auto;display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--hp-soft);}
+#homePage .hp-learn a{font-size:14px;color:var(--hp-accent);font-weight:600;}
+#homePage .hp-learn i{font-size:14px;color:var(--hp-muted);transition:transform .2s;}
+#homePage .hp-module:hover .hp-learn i{transform:translateX(4px);color:var(--hp-accent);}
+
+/* Pricing */
+#homePage .hp-tiers{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:30px;}
+#homePage .hp-tier{background:var(--hp-card);border-radius:16px;padding:40px 32px;border:1px solid var(--hp-line);position:relative;transition:all .3s;}
+#homePage .hp-tier:hover{transform:translateY(-4px);box-shadow:0 20px 30px rgba(0,0,0,.04);}
+#homePage .hp-tier.featured{border-color:var(--hp-accent);box-shadow:0 20px 40px rgba(37,99,235,.06);}
+#homePage .hp-tier.featured .hp-pop{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--hp-accent);color:#fff;padding:4px 14px;border-radius:999px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+#homePage .hp-tier h3{font-size:22px;color:var(--hp-ink);font-weight:700;margin-bottom:8px;}
+#homePage .hp-price{font-size:36px;font-weight:800;color:var(--hp-ink);letter-spacing:-1px;margin-bottom:16px;}
+#homePage .hp-price small{font-size:14px;color:var(--hp-muted);font-weight:500;letter-spacing:0;}
+#homePage .hp-tier p{font-size:15px;line-height:1.6;color:var(--hp-muted);padding-top:20px;border-top:1px solid var(--hp-soft);}
+#homePage .hp-tier-note{text-align:center;margin-top:28px;font-size:14px;color:var(--hp-muted);}
+#homePage .hp-tier-cta{text-align:center;margin-top:20px;}
+
+/* FAQ */
+#homePage .hp-faq{max-width:860px;margin:auto;display:flex;flex-direction:column;gap:14px;}
+#homePage .hp-faq details{background:var(--hp-card);border:1px solid var(--hp-line);border-radius:10px;padding:18px 24px;}
+#homePage .hp-faq summary{cursor:pointer;font-weight:700;color:var(--hp-ink);font-size:16px;}
+#homePage .hp-faq details[open]{border-color:var(--hp-accent);}
+#homePage .hp-faq details p{margin-top:12px;font-size:15px;line-height:1.6;color:var(--hp-muted);}
+
+/* Contact form */
+#homePage .hp-form-card{background:var(--hp-card);border:1px solid var(--hp-line);border-radius:16px;padding:32px;box-shadow:0 4px 6px -1px rgba(0,0,0,.02);}
+#homePage .hp-form{display:grid;gap:16px;}
+#homePage .hp-form label{font-size:14px;font-weight:600;color:var(--hp-ink);display:grid;gap:6px;}
+#homePage .hp-form input,#homePage .hp-form textarea{width:100%;padding:13px 14px;background:var(--hp-input);border:1px solid var(--hp-line);color:var(--hp-ink);border-radius:8px;font:inherit;}
+#homePage .hp-form input:focus,#homePage .hp-form textarea:focus{outline:none;border-color:var(--hp-accent);box-shadow:0 0 0 3px rgba(37,99,235,.18);}
+#homePage .hp-form button.hp-btn{justify-self:start;}
+#homePage #contactConfirm{color:#16a34a;font-weight:600;font-size:15px;}
+#homePage #contactConfirm.hidden{display:none;}
+#homePage .hp-contact-list{margin-top:8px;display:grid;gap:12px;}
+#homePage .hp-contact-list div{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--hp-text);}
+#homePage .hp-contact-list i{width:36px;height:36px;border-radius:8px;background:var(--hp-accent-faint);color:var(--hp-accent);display:inline-flex;align-items:center;justify-content:center;font-size:14px;}
+
+/* CTA band */
+#homePage .hp-cta{padding:100px 5%;background:#0f172a;color:#fff;position:relative;overflow:hidden;}
+#homePage .hp-ctabox{max-width:1200px;margin:auto;display:grid;grid-template-columns:1.5fr 1fr;gap:80px;align-items:center;}
+#homePage .hp-cta h2{font-size:42px;font-weight:800;letter-spacing:-1px;margin-bottom:20px;color:#fff;line-height:1.15;}
+#homePage .hp-cta p{font-size:18px;color:#94a3b8;line-height:1.6;margin-bottom:32px;}
+#homePage .hp-cta-btns{display:flex;gap:16px;flex-wrap:wrap;}
+#homePage .hp-cta-primary{background:var(--hp-accent);color:#fff;padding:14px 28px;border-radius:8px;font-weight:600;border:0;}
+#homePage .hp-cta-secondary{border:1px solid #334155;background:none;color:#fff;padding:14px 28px;border-radius:8px;font-weight:600;}
+#homePage .hp-cta-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);padding:32px;border-radius:16px;}
+#homePage .hp-cta-card h3{font-size:20px;margin-bottom:24px;font-weight:700;color:#fff;}
+#homePage .hp-cta-item{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px;color:#cbd5e1;}
+#homePage .hp-cta-item:last-child{border:none;}
+
+/* Footer */
+#homePage .hp-footer{background:#020617;color:#94a3b8;padding:80px 5% 30px;border-top:1px solid #0f172a;}
+#homePage .hp-footgrid{max-width:1200px;margin:0 auto 60px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;}
+#homePage .hp-footlogo h2{font-size:24px;font-weight:800;color:#fff;margin-bottom:16px;}
+#homePage .hp-footlogo p{font-size:14px;line-height:1.6;}
+#homePage .hp-footcol h3{font-size:14px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:20px;}
+#homePage .hp-footcol ul{display:flex;flex-direction:column;gap:12px;}
+#homePage .hp-footcol a,#homePage .hp-footcol button{color:#94a3b8;font-size:14px;background:none;border:0;padding:0;text-align:left;}
+#homePage .hp-footcol a:hover,#homePage .hp-footcol button:hover{color:#fff;}
+#homePage .hp-bottom{max-width:1200px;margin:0 auto;border-top:1px solid #0f172a;padding-top:30px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;}
+
+/* Responsive */
+@media(max-width:1100px){
+#homePage .hp-nav ul{gap:20px;}
+}
+@media(max-width:1024px){
+#homePage .hp-hero{flex-direction:column;align-items:flex-start;gap:48px;padding:60px 5%;}
+#homePage .hp-left,#homePage .hp-right{width:100%;}
+#homePage .hp-left h1{font-size:40px;}
+#homePage .hp-float{display:none;}
+#homePage .hp-two,#homePage .hp-ctabox,#homePage .hp-feature{grid-template-columns:1fr;gap:40px;}
+#homePage .hp-ctabox{gap:40px;}
+#homePage .hp-feature{gap:0;}
+#homePage .hp-feature-side{border-left:0;border-top:1px solid rgba(255,255,255,.08);}
+#homePage .hp-grid3,#homePage .hp-modules,#homePage .hp-steps,#homePage .hp-tiers{grid-template-columns:repeat(2,1fr);}
+#homePage .hp-footgrid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:900px){
+#homePage .hp-burger{display:inline-flex;}
+#homePage .hp-nav{display:none;position:absolute;top:80px;left:0;right:0;background:var(--hp-bg);border-bottom:1px solid var(--hp-line);padding:16px 5% 20px;box-shadow:0 20px 30px rgba(0,0,0,.08);}
+#homePage .hp-nav.open{display:block;}
+#homePage .hp-nav ul{flex-direction:column;align-items:flex-start;gap:16px;}
+#homePage .hp-signin{display:none;}
+}
+@media(max-width:640px){
+#homePage .hp-section,#homePage .hp-section-alt,#homePage .hp-cta{padding:64px 5%;}
+#homePage .hp-title h2,#homePage .hp-cta h2{font-size:28px;}
+#homePage .hp-left h1{font-size:32px;}
+#homePage .hp-grid3,#homePage .hp-grid2,#homePage .hp-modules,#homePage .hp-steps,#homePage .hp-tiers,#homePage .hp-stats,#homePage .hp-footgrid,#homePage .hp-chips{grid-template-columns:1fr;}
+#homePage .hp-logo span{display:none;}
+#homePage .hp-getstarted{padding:10px 14px;}
+#homePage .hp-preview,#homePage .hp-form-card,#homePage .hp-feature-main,#homePage .hp-feature-side{padding:24px;}
+}
+
+/* single-view navigation: only the chosen page shows */
+#homePage .hp-page{display:none;}
+#homePage .hp-page.hp-active{display:block;animation:hpFade .35s ease;}
+#homePage .hp-hero.hp-active{display:flex;}
+#homePage .hp-section.hp-page,#homePage .hp-section-alt.hp-page{margin-top:80px;min-height:calc(100vh - 80px);}
+#homePage .hp-nav a.hp-current{color:var(--hp-accent);font-weight:700;}
+@keyframes hpFade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+
+/* ==== Acacia Mail public home: same look as the Support site home ==== */
+#homePage{display:none;position:fixed;inset:0;z-index:600;overflow-y:auto;inset:0;letter-spacing:normal;}
+#homePage,#homePage *:not(i):not(svg):not(svg *){font-family:Cambria,Georgia,'Times New Roman',serif !important;font-size:.875rem !important;line-height:1.25rem !important;letter-spacing:normal;}
+#homePage i.fa-solid,#homePage i.fa-regular{font-family:"Font Awesome 6 Free" !important;}
+#homePage *{margin:0;padding:0;box-sizing:border-box;}
+#homePage .hidden{display:none !important;}
+#homePage .hp-page{display:none;}
+#homePage .hp-page.hp-active{display:block;animation:hpFade .35s ease;}
+#homePage .hp-hero.hp-active{display:flex;}
+#homePage .hp-section.hp-page,#homePage .hp-section-alt.hp-page{margin-top:80px;min-height:calc(100vh - 80px);}
+#homePage .hp-nav a.hp-current{color:var(--hp-accent);font-weight:700;}
+@keyframes hpFade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+#homePage .hp-billing{display:flex;justify-content:center;align-items:center;gap:12px;margin:0 auto 36px;font-weight:600;color:var(--hp-ink);}
+#homePage .hp-billing em{font-style:normal;color:var(--hp-accent);font-size:13px;}
+#homePage .hp-switch{position:relative;width:48px;height:26px;display:inline-block;cursor:pointer;}
+#homePage .hp-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1;}
+#homePage .hp-switch i{position:absolute;inset:0;background:var(--hp-accent);border-radius:999px;transition:.2s;}
+#homePage .hp-switch i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;}
+#homePage .hp-switch input:checked+i::after{transform:translateX(22px);}
+#homePage .hp-switch input:focus-visible+i{outline:3px solid var(--hp-accent-light);outline-offset:2px;}
+#homePage .hp-tiers6{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr);gap:16px;align-items:stretch;}
+#homePage .hp-tiers6 .hp-tier{padding:28px 18px 20px;display:flex;flex-direction:column;}
+#homePage .hp-tiers6 .hp-tier h3{font-size:19px;margin-bottom:2px;}
+#homePage .hp-tiers6 .hp-tag{font-size:13px;color:var(--hp-muted);margin-bottom:14px;min-height:2.6em;}
+#homePage .hp-tiers6 .hp-price{font-size:24px;margin-bottom:14px;}
+#homePage .hp-tiers6 .hp-price.hp-custom{font-size:20px;}
+#homePage .hp-feats{list-style:none;margin:0 0 8px;padding:0;flex:1;}
+#homePage .hp-feats li{font-size:13px;line-height:1.45;color:var(--hp-text);padding:7px 0;border-top:1px solid var(--hp-soft);}
+#homePage .hp-feats li:first-child{border-top:0;}
+#homePage .hp-feats li.hp-extra{display:none;}
+#homePage .hp-tier.hp-open .hp-feats li.hp-extra{display:block;}
+#homePage .hp-more{background:none;border:0;color:var(--hp-accent);font-size:12px;font-weight:700;text-align:left;padding:4px 0 14px;cursor:pointer;}
+#homePage .hp-more:hover{text-decoration:underline;}
+#homePage .hp-tier-btn{display:block;text-align:center;background:var(--hp-accent);color:#fff;font-weight:600;font-size:14px;padding:10px 12px;border-radius:8px;transition:.2s;}
+#homePage .hp-tier-btn:hover{background:var(--hp-accent-d);}
+#homePage .hp-subhead{text-align:center;margin:64px auto 20px;}
+#homePage .hp-subhead h3{font-size:24px;font-weight:800;color:var(--hp-ink);margin-bottom:6px;}
+#homePage .hp-subhead p{font-size:15px;color:var(--hp-muted);}
+#homePage .hp-tablewrap{max-width:1000px;margin:0 auto;overflow-x:auto;border:1px solid var(--hp-line);border-radius:12px;background:var(--hp-card);}
+#homePage .hp-table{width:100%;border-collapse:collapse;font-size:14px;color:var(--hp-text);}
+#homePage .hp-table th,#homePage .hp-table td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--hp-soft);white-space:nowrap;}
+#homePage .hp-table thead th{background:var(--hp-alt);color:var(--hp-ink);font-weight:700;}
+#homePage .hp-table tbody tr:last-child td,#homePage .hp-table tbody tr:last-child th{border-bottom:0;}
+#homePage .hp-limits th,#homePage .hp-limits td{text-align:center;}
+#homePage .hp-limits th:first-child,#homePage .hp-limits td:first-child{text-align:left;}
+#homePage .hp-limits tbody th{color:var(--hp-ink);font-weight:600;}
+#homePage .hp-yes{color:#16a34a;font-weight:600;}
+@media (max-width:1279px){#homePage .hp-tiers6{grid-template-columns:repeat(3,1fr);}}
+@media (max-width:899px){#homePage .hp-tiers6{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:639px){#homePage .hp-tiers6{grid-template-columns:1fr;}}
+.auth-back{font-size:12px;color:var(--ink-soft);cursor:pointer;margin-bottom:14px;align-self:flex-start;display:inline-block}
+.auth-back:hover{color:var(--green-deep);text-decoration:underline}
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 </head>
 <body>
+<!-- ============ PUBLIC HOME PAGE ============ -->
+<div id="homePage">
+
+  <header class="hp-header">
+    <a href="#top" class="hp-logo" data-scroll>
+      <div class="hp-logo-mark"><i class="fa-solid fa-receipt"></i></div>
+      <div>
+        <h2>Acacia Expenses</h2>
+        <span>Spending &amp; approvals</span>
+      </div>
+    </a>
+    <nav class="hp-nav" id="hpNav" aria-label="Main">
+      <ul>
+        <li><a href="#top" data-scroll>Home</a></li>
+        <li><a href="#about" data-scroll>About</a></li>
+        <li><a href="#features" data-scroll>Features</a></li>
+        <li><a href="#process" data-scroll>How it works</a></li>
+        <li><a href="#pricing" data-scroll>Pricing</a></li>
+        <li><a href="#faq" data-scroll>FAQ</a></li>
+        <li><a href="#contact" data-scroll>Contact</a></li>
+      </ul>
+    </nav>
+    <div class="hp-actions">
+      <button type="button" class="hp-theme" onclick="hpTheme()" aria-label="Toggle dark mode" title="Toggle dark mode"><i class="fa-solid fa-moon hp-moon"></i><i class="fa-solid fa-sun hp-sun"></i></button>
+      <button type="button" class="hp-signin" onclick="hpShowLogin('login')">Log in</button>
+      <a href="#register" class="hp-getstarted" onclick="hpShowLogin('register');return false;">Create account</a>
+      <button type="button" class="hp-burger" id="hpBurger" aria-label="Open menu" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
+    </div>
+  </header>
+
+  <section class="hp-hero hp-page" data-page="top">
+    <div class="hp-slides" aria-hidden="true">
+      <div class="hp-slide active" style="background-image:url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1920&q=80');"></div>
+      <div class="hp-slide" style="background-image:url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1920&q=80');"></div>
+      <div class="hp-slide" style="background-image:url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1920&q=80');"></div>
+    </div>
+
+    <div class="hp-left">
+      <div class="hp-badge"><i class="fa-solid fa-receipt"></i> Track spending, route approvals and keep every expense organised.</div>
+      <h1>Every expense, logged and approved in one place.</h1>
+      <p>Acacia Expenses helps your team log and categorise spending, move each expense through approval to payment, and see where the money goes.</p>
+      <p>Log in to your account, or create one for your company and log your first expense.</p>
+      <div class="hp-hero-btns">
+        <a href="#register" class="hp-primary" onclick="hpShowLogin('register');return false;">Create your account</a>
+        <a href="#login" class="hp-secondary" onclick="hpShowLogin('login');return false;">Log in</a>
+      </div>
+    </div>
+
+    <div class="hp-right">
+      <div class="hp-preview">
+        <h2>What's inside</h2>
+        <div class="hp-item"><span>Expenses</span><strong>Log &amp; categorise</strong></div>
+        <div class="hp-item"><span>Workflow</span><strong>Draft to Approved to Paid</strong></div>
+        <div class="hp-item"><span>Suppliers</span><strong>VAT-ready reporting</strong></div>
+        <div class="hp-item"><span>Dashboard</span><strong>Spend at a glance</strong></div>
+      </div>
+      <div class="hp-float hp-float1"><i class="fa-solid fa-circle-check"></i> Approvals</div>
+      <div class="hp-float hp-float2"><i class="fa-solid fa-file-invoice"></i> VAT-ready</div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-page" id="hp-about" data-page="about">
+    <div class="hp-two">
+      <div class="hp-text">
+        <div class="hp-title left">
+          <span>About Acacia Expenses</span>
+          <h2>Know what was spent, who approved it and whether it was paid.</h2>
+        </div>
+        <p>Acacia Expenses is where your company logs its spending. Every expense is recorded with its category, supplier and VAT rate, so nothing sits in a receipt pile or a spreadsheet.</p>
+        <p>Each expense moves through a controlled workflow, from Draft through approval to Paid, so you can see what is waiting for sign-off and what is still outstanding.</p>
+        <p>Reports and a dashboard turn the entries into spend by category, spend by supplier, paid versus unpaid, and a VAT and input tax summary.</p>
+        <div class="hp-actions-row">
+          <a href="#register" class="hp-btn" onclick="hpShowLogin('register');return false;">Create your account <i class="fa-solid fa-arrow-right"></i></a>
+          <button type="button" class="hp-btn ghost" onclick="hpShowLogin('login')">Log in</button>
+        </div>
+      </div>
+      <div>
+        <div class="hp-stats">
+          <div class="hp-stat"><h4>Logged</h4><p>Every expense recorded and categorised</p></div>
+          <div class="hp-stat"><h4>Approved</h4><p>A controlled approval workflow</p></div>
+          <div class="hp-stat"><h4>VAT-ready</h4><p>VAT and input tax summarised for you</p></div>
+          <div class="hp-stat"><h4>At a glance</h4><p>A dashboard of spend and what is outstanding</p></div>
+        </div>
+        <div class="hp-quote">
+          <i class="fa-solid fa-quote-left"></i>
+          <p>Track spending, route approvals, and keep every expense organised in one place.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section-alt hp-page" id="hp-features" data-page="features">
+    <div class="hp-title">
+      <span>What you get</span>
+      <h2>Everything you need to control spending</h2>
+      <p>Six areas that keep expenses organised from entry to payment.</p>
+    </div>
+    <div class="hp-grid3">
+      <div class="hp-card">
+        <div class="hp-icon"><i class="fa-solid fa-receipt"></i></div>
+        <h3>Log every expense</h3>
+        <p>Record each expense with its description, category, supplier and VAT rate, then filter and search them by text, status or category.</p>
+      </div>
+      <div class="hp-card">
+        <div class="hp-icon"><i class="fa-solid fa-tags"></i></div>
+        <h3>Categories</h3>
+        <p>Group spending into categories you can manage in Settings, so reports show where the money is going.</p>
+      </div>
+      <div class="hp-card">
+        <div class="hp-icon"><i class="fa-solid fa-circle-check"></i></div>
+        <h3>Approval workflow</h3>
+        <p>Expenses move through statuses such as Draft, Submitted, Pending Approval, Approved, Posted, Paid and Rejected, so you always know where each one stands.</p>
+      </div>
+      <div class="hp-card">
+        <div class="hp-icon"><i class="fa-solid fa-truck"></i></div>
+        <h3>Suppliers</h3>
+        <p>Keep a list of suppliers and see spending by supplier.</p>
+      </div>
+      <div class="hp-card">
+        <div class="hp-icon"><i class="fa-solid fa-chart-pie"></i></div>
+        <h3>Expense reports</h3>
+        <p>Expense by category, expense by supplier, paid versus unpaid, and a VAT and input tax summary.</p>
+      </div>
+      <div class="hp-card">
+        <div class="hp-icon"><i class="fa-solid fa-gauge"></i></div>
+        <h3>Dashboard</h3>
+        <p>Total expenses, this month, pending approval, paid, outstanding, VAT and input tax, operating costs and approved, all at a glance.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-page" id="hp-process" data-page="process">
+    <div class="hp-title">
+      <span>How it works</span>
+      <h2>From receipt to paid</h2>
+      <p>Three steps, and your spending is under control.</p>
+    </div>
+    <div class="hp-steps">
+      <div class="hp-step">
+        <div class="hp-num">1</div>
+        <h3>Create your account</h3>
+        <p>Enter your company name, your name, your email address and a password. You start with a blank account, ready for your own expenses.</p>
+      </div>
+      <div class="hp-step">
+        <div class="hp-num">2</div>
+        <h3>Log expenses</h3>
+        <p>Add each expense with its category, supplier and VAT rate, and send it for approval when it is ready.</p>
+      </div>
+      <div class="hp-step">
+        <div class="hp-num">3</div>
+        <h3>Approve, pay and review</h3>
+        <p>Move approved expenses on to Paid, and use the dashboard and reports to see what was spent and what is outstanding.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section-alt hp-page" id="hp-pricing" data-page="pricing">
+    <div class="hp-title">
+      <span>Pricing</span>
+      <h2>Pricing that grows with the business</h2>
+      <p>Start on Free, move up a tier the moment you need it &mdash; every plan shares the same data, so nothing gets re-entered.</p>
+    </div>
+    <div class="hp-billing">
+      <span>Monthly</span>
+      <label class="hp-switch"><input type="checkbox" id="hpBilling" onchange="hpBillingToggle()" aria-label="Bill yearly"><i></i></label>
+      <span>Yearly <em>(2 months free)</em></span>
+    </div>
+    <div class="hp-tiers6">
+      <div class="hp-tier">
+        <h3>Free</h3>
+        <div class="hp-tag">Start your business</div>
+        <div class="hp-price"><span class="hp-amt" data-month="0" data-year="0">KES 0</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li>📦 Inventory &amp; Stock Movements</li>
+          <li>👥 Customers, Invoices &amp; Receipts</li>
+          <li>🚚 Suppliers &amp; Supplier Payments</li>
+          <li>🧾 Operational Costs</li>
+          <li>🧮 Manual Journals &amp; Chart of Accounts</li>
+          <li class="hp-extra">🏦 Current Accounts</li>
+          <li class="hp-extra">💵 Employees, Earnings &amp; Attendance</li>
+          <li class="hp-extra">📁 Files &amp; Recycle Bin</li>
+          <li class="hp-extra">⚙️ Org Profile, Preferences, Users</li>
+          <li class="hp-extra">📬 Acacia Mail included free</li>
+          <li class="hp-extra">📏 1 user · 100 products · 100 customers · 25 invoices/mo · 1 warehouse · 100 MB</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="6">Show 6 more features &#9662;</button>
+        <a href="https://kimani254star.github.io/acacia-books/" target="_blank" rel="noopener" class="hp-tier-btn">Get Started</a>
+      </div>
+      <div class="hp-tier">
+        <h3>Starter</h3>
+        <div class="hp-tag">Run your daily operations</div>
+        <div class="hp-price"><span class="hp-amt" data-month="1500" data-year="15000">KES 1,500</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Free, plus:</strong></li>
+          <li>🧾 Quotes &amp; Delivery</li>
+          <li>📄 Customer &amp; Supplier Statements</li>
+          <li>📥 GRN &amp; Supplier Bills</li>
+          <li>🏬 Warehouses, Shipments &amp; Price Lists</li>
+          <li class="hp-extra">🧮 VAT &amp; Transaction Locking</li>
+          <li class="hp-extra">🔗 Integrations &amp; Settings Templates</li>
+          <li class="hp-extra">🗂️ Subscription Plans tracking</li>
+          <li class="hp-extra">📏 3 users · 1,000 products · 500 customers · 200 invoices/mo · 2 warehouses · 1 GB</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
+        <a href="https://kimani254star.github.io/acacia-books/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
+      </div>
+      <div class="hp-tier featured">
+        <div class="hp-pop">Most popular</div>
+        <h3>Pro</h3>
+        <div class="hp-tag">Run your complete business</div>
+        <div class="hp-price"><span class="hp-amt" data-month="3500" data-year="35000">KES 3,500</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Starter, plus:</strong></li>
+          <li>🧾 Sales Orders &amp; Purchase Orders</li>
+          <li>↩️ Credit Notes, Debit Notes &amp; Returns</li>
+          <li>📦 Inventory Costing</li>
+          <li>🧮 Recurring Journals &amp; Currency Adjustments</li>
+          <li class="hp-extra">📊 Budgets</li>
+          <li class="hp-extra">💵 Gross Pay &amp; Payslips</li>
+          <li class="hp-extra">🗂️ Projects</li>
+          <li class="hp-extra">📏 10 users · 5,000 products · 2,500 customers · 1,000 invoices/mo · 5 warehouses · 5 GB</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
+        <a href="https://kimani254star.github.io/acacia-books/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
+      </div>
+      <div class="hp-tier">
+        <h3>Business</h3>
+        <div class="hp-tag">Automate and scale</div>
+        <div class="hp-price"><span class="hp-amt" data-month="7500" data-year="75000">KES 7,500</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Pro, plus:</strong></li>
+          <li>⚡ Bulk &amp; Recurring Invoices</li>
+          <li>⚡ Bulk Billing &amp; Bulk Costing</li>
+          <li>🧮 Tax Payments &amp; Tax Adjustments</li>
+          <li>🏛️ Non-Current Assets, Liabilities &amp; Equity</li>
+          <li class="hp-extra">💵 Statutory Deductions &amp; Payroll Reports</li>
+          <li class="hp-extra">📈 Project Revenue</li>
+          <li class="hp-extra">⚙️ System Configuration &amp; Integrations Hub</li>
+          <li class="hp-extra">🔍 User Activity</li>
+          <li class="hp-extra">📏 25 users · 25,000 products · 10,000 customers · 5,000 invoices/mo · 15 warehouses · 25 GB</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="5">Show 5 more features &#9662;</button>
+        <a href="https://kimani254star.github.io/acacia-books/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
+      </div>
+      <div class="hp-tier">
+        <h3>Enterprise</h3>
+        <div class="hp-tag">Control your organization</div>
+        <div class="hp-price hp-custom">Custom</div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Business, plus:</strong></li>
+          <li>👥 Custom user limits</li>
+          <li>💾 Custom storage</li>
+          <li>🔢 Custom transaction limits</li>
+          <li>🛡️ Advanced administration &amp; controls</li>
+          <li class="hp-extra">📈 Advanced reporting</li>
+          <li class="hp-extra">🔗 Enterprise integrations</li>
+          <li class="hp-extra">⚙️ Dedicated configuration</li>
+          <li class="hp-extra">🤝 Custom support arrangements</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
+        <a href="#contact" data-scroll class="hp-tier-btn">Talk to Sales</a>
+      </div>
+      <div class="hp-tier">
+        <h3>All Access</h3>
+        <div class="hp-tag">Everything Acacia</div>
+        <div class="hp-price"><span class="hp-amt" data-month="15000" data-year="150000">KES 15,000</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats">
+          <li><strong>Everything in Acacia Books, plus:</strong></li>
+          <li>📬 Acacia Mail</li>
+          <li>🤝 Acacia Books CRM</li>
+          <li>🗂️ Acacia Projects</li>
+          <li>💵 Acacia Payroll</li>
+          <li class="hp-extra">🛒 Acacia Sell</li>
+          <li class="hp-extra">✅ No separate companion-app subscriptions</li>
+          <li class="hp-extra">📏 Enterprise-level or custom limits</li>
+        </ul>
+        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="3">Show 3 more features &#9662;</button>
+        <a href="https://kimani254star.github.io/acacia-books/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
+      </div>
+    </div>
+
+    <div class="hp-subhead"><h3>Companion apps</h3><p>Add them to any plan, or get them all with All Access.</p></div>
+    <div class="hp-tablewrap">
+      <table class="hp-table">
+        <thead><tr><th>Companion App</th><th>Add-on price</th><th>All Access</th></tr></thead>
+        <tbody>
+          <tr><td>&#128236; Acacia Mail</td><td>Free</td><td class="hp-yes">&#10003; Included</td></tr>
+          <tr><td>&#129309; Acacia Books CRM</td><td>KES 1,200/month</td><td class="hp-yes">&#10003; Included</td></tr>
+          <tr><td>&#128194; Acacia Projects</td><td>KES 1,500/month</td><td class="hp-yes">&#10003; Included</td></tr>
+          <tr><td>&#128181; Acacia Payroll</td><td>KES 2,000/month</td><td class="hp-yes">&#10003; Included</td></tr>
+          <tr><td>&#128722; Acacia Sell</td><td>KES 2,500/month</td><td class="hp-yes">&#10003; Included</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hp-subhead"><h3>Usage limits</h3><p>Every plan shares the same data &mdash; only the ceilings change.</p></div>
+    <div class="hp-tablewrap">
+      <table class="hp-table hp-limits">
+        <thead><tr><th>Limit</th><th>Free</th><th>Starter</th><th>Pro</th><th>Business</th><th>Enterprise</th></tr></thead>
+        <tbody>
+          <tr><th>Users</th><td>1</td><td>3</td><td>10</td><td>25</td><td>Custom</td></tr>
+          <tr><th>Warehouses</th><td>1</td><td>2</td><td>5</td><td>15</td><td>Custom</td></tr>
+          <tr><th>Customers</th><td>100</td><td>500</td><td>2,500</td><td>10,000</td><td>Custom</td></tr>
+          <tr><th>Suppliers</th><td>50</td><td>250</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
+          <tr><th>Products</th><td>100</td><td>1,000</td><td>5,000</td><td>25,000</td><td>Custom</td></tr>
+          <tr><th>Invoices / month</th><td>25</td><td>200</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
+          <tr><th>Bills / month</th><td>25</td><td>200</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
+          <tr><th>Projects</th><td>0</td><td>0</td><td>10</td><td>50</td><td>Custom</td></tr>
+          <tr><th>Payroll employees</th><td>5</td><td>25</td><td>100</td><td>500</td><td>Custom</td></tr>
+          <tr><th>File storage</th><td>100 MB</td><td>1 GB</td><td>5 GB</td><td>25 GB</td><td>Custom</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="hp-section hp-page" id="hp-faq" data-page="faq">
+    <div class="hp-title">
+      <span>Good questions</span>
+      <h2>Frequently asked questions</h2>
+      <p>A few quick answers before you sign up.</p>
+    </div>
+    <div class="hp-faq">
+      <details open>
+        <summary>How do I create an account?</summary>
+        <p>Choose Create account and enter your company name, your name, your email address and a password of at least 6 characters.</p>
+      </details>
+      <details>
+        <summary>What happens to an expense after I log it?</summary>
+        <p>It moves through a status workflow, for example Draft, Submitted, Pending Approval, Approved, Posted and Paid. An expense can also be Rejected.</p>
+      </details>
+      <details>
+        <summary>Does it handle VAT?</summary>
+        <p>Yes. You choose a VAT rate on each expense, and the reports include a VAT and input tax summary.</p>
+      </details>
+      <details>
+        <summary>Can I see spending by supplier or category?</summary>
+        <p>Yes. The reports show expense by category and expense by supplier, as well as paid versus unpaid.</p>
+      </details>
+      <details>
+        <summary>Can it connect to Acacia Books?</summary>
+        <p>Yes. The Connect page links your account to your Acacia Books company.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="hp-section-alt hp-page" id="hp-contact" data-page="contact">
+    <div class="hp-two">
+      <div class="hp-text">
+        <div class="hp-title left">
+          <span>Get in touch</span>
+          <h2>Questions about Acacia Expenses?</h2>
+        </div>
+        <p>Send a message and we'll reply by email.</p>
+        <div class="hp-contact-list">
+          <div><i class="fa-solid fa-envelope"></i> <a href="mailto:hello@example.com">hello@example.com</a></div>
+        </div>
+      </div>
+      <div class="hp-form-card">
+        <form class="hp-form" onsubmit="return hpContact(event)">
+          <label>Your name<input id="hpName" required autocomplete="name"></label>
+          <label>Email address<input id="hpEmail" type="email" required autocomplete="email"></label>
+          <label>Your message<textarea id="hpMsg" required rows="4"></textarea></label>
+          <button type="submit" class="hp-btn">Send message <i class="fa-solid fa-paper-plane"></i></button>
+          <p id="contactConfirm" class="hidden">Your email app should open with the message ready to send.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-cta hp-page" data-page="top">
+    <div class="hp-ctabox">
+      <div>
+        <h2>Ready to get your spending organised?</h2>
+        <p>Create your company account, or log in and pick up where you left off.</p>
+        <div class="hp-cta-btns">
+          <a href="#register" class="hp-cta-primary" onclick="hpShowLogin('register');return false;">Create your account</a>
+          <button type="button" class="hp-cta-secondary" onclick="hpShowLogin('login')">Log in</button>
+        </div>
+      </div>
+      <div class="hp-cta-card">
+        <h3>What you get</h3>
+        <div class="hp-cta-item"><span>Log</span><strong>Expenses / Categories / VAT</strong></div>
+        <div class="hp-cta-item"><span>Approve</span><strong>Draft / Approved / Paid</strong></div>
+        <div class="hp-cta-item"><span>Review</span><strong>Reports / Dashboard</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="hp-footer">
+    <div class="hp-footgrid">
+      <div class="hp-footlogo">
+        <h2>Acacia Expenses</h2>
+        <p>Track spending, route approvals, and keep every expense organised in one place.</p>
+      </div>
+      <div class="hp-footcol">
+        <h3>Explore</h3>
+        <ul>
+          <li><a href="#about" data-scroll>About</a></li>
+          <li><a href="#features" data-scroll>Features</a></li>
+          <li><a href="#pricing" data-scroll>Pricing</a></li>
+        </ul>
+      </div>
+      <div class="hp-footcol">
+        <h3>Account</h3>
+        <ul>
+          <li><a href="#faq" data-scroll>FAQ</a></li>
+          <li><button type="button" onclick="hpShowLogin('login')">Log in</button></li>
+          <li><button type="button" onclick="hpShowLogin('register')">Create account</button></li>
+        </ul>
+      </div>
+      <div class="hp-footcol">
+        <h3>Contact</h3>
+        <ul>
+          <li><a href="mailto:hello@example.com"><i class="fa-solid fa-envelope" style="font-size:12px;margin-right:4px;"></i> hello@example.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="hp-bottom">
+      <span>&copy; <span id="footerYear"></span> Acacia Expenses.</span>
+    </div>
+  </footer>
+</div>
+<!-- ============ END PUBLIC HOME PAGE ============ -->
+
+<script>
+/* Public home page: single-view navigation, same behaviour as the Support site */
+  function hpMore(btn){
+    var card=btn.closest('.hp-tier');
+    var open=card.classList.toggle('hp-open');
+    btn.innerHTML=open?'Show less &#9652;':'Show '+btn.getAttribute('data-n')+' more features &#9662;';
+  }
+  function hpBillingToggle(){
+    var yearly=document.getElementById('hpBilling').checked;
+    document.querySelectorAll('#homePage .hp-amt').forEach(function(el){
+      var p=yearly?+el.getAttribute('data-year'):+el.getAttribute('data-month');
+      el.textContent='KES '+p.toLocaleString('en-US');
+      var per=el.parentElement.querySelector('.hp-per');
+      if(per) per.textContent=yearly?'/yr':'/mo';
+    });
+  }
+(function(){
+  var root=document.getElementById('homePage');
+  var slides=root.querySelectorAll('.hp-slide'),si=0;
+  setInterval(function(){
+    if(root.style.display!=='block'||slides.length<2) return;
+    slides[si].classList.remove('active'); si=(si+1)%slides.length; slides[si].classList.add('active');
+  },5000);
+  var nav=document.getElementById('hpNav'),burger=document.getElementById('hpBurger');
+  burger.addEventListener('click',function(){
+    var open=nav.classList.toggle('open');
+    burger.setAttribute('aria-expanded',open?'true':'false');
+  });
+  var pages=root.querySelectorAll('.hp-page');
+  var valid={top:1,about:1,features:1,process:1,pricing:1,faq:1,contact:1};
+  function show(id){
+    if(!valid[id]) id='top';
+    pages.forEach(function(p){p.classList.toggle('hp-active',p.getAttribute('data-page')===id);});
+    root.querySelectorAll('.hp-nav a').forEach(function(a){a.classList.toggle('hp-current',a.getAttribute('href')==='#'+id);});
+    nav.classList.remove('open'); burger.setAttribute('aria-expanded','false');
+    root.scrollTop=0;
+  }
+  root.querySelectorAll('a[data-scroll]').forEach(function(a){
+    a.addEventListener('click',function(e){ e.preventDefault(); show(a.getAttribute('href').slice(1)); });
+  });
+  var y=document.getElementById('footerYear'); if(y) y.textContent=new Date().getFullYear();
+  show('top');
+  window.hpShowPage=show;
+})();
+function hpShowHome(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('homePage').style.display='block';
+  window.hpShowPage&&window.hpShowPage('top');
+}
+function hpHideHome(){ document.getElementById('homePage').style.display='none'; }
+function hpShowLogin(tab){
+  hpHideHome();
+  document.getElementById('authScreen').style.display='flex';
+  switchAuthTab(tab||'login');
+}
+function hpTheme(){
+  var r=document.getElementById('homePage'); var d=r.classList.toggle('hp-dark');
+  try{ localStorage.setItem('acacia_home_theme', d?'dark':'light'); }catch(e){}
+}
+try{ if(localStorage.getItem('acacia_home_theme')==='dark') document.getElementById('homePage').classList.add('hp-dark'); }catch(e){}
+function hpContact(e){
+  e.preventDefault();
+  var n=document.getElementById('hpName').value.trim(), m=document.getElementById('hpEmail').value.trim(), t=document.getElementById('hpMsg').value.trim();
+  var body='From: '+n+' <'+m+'>\n\n'+t;
+  window.location.href='mailto:hello@example.com?subject='+encodeURIComponent('Acacia Expenses enquiry')+'&body='+encodeURIComponent(body);
+  document.getElementById('contactConfirm').classList.remove('hidden');
+  return false;
+}
+</script>
 
 <div id="authScreen">
   <div class="auth-wrap">
@@ -227,6 +1006,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
       <div class="foot">Your expense data is kept private to your account.</div>
     </div>
     <div class="auth-form-panel">
+      <a class="auth-back" onclick="hpShowHome()">&larr; Back to site</a>
       <div class="auth-tabs">
         <div class="auth-tab active" id="tabLoginBtn" onclick="switchAuthTab('login')">Log In</div>
         <div class="auth-tab" id="tabRegisterBtn" onclick="switchAuthTab('register')">Create Account</div>
@@ -442,6 +1222,9 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
         <div>
           <div class="view-title">Connect with Books</div>
           <div class="view-sub">Link this account to your Acacia Payroll / Books company</div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="refreshBooksConnection()">Connect</button>
         </div>
       </div>
       <div id="connectStatusCard"></div>
@@ -678,7 +1461,7 @@ document.addEventListener('click', ()=>{ const m=document.getElementById('userMe
 function enterApp(user){
   CURRENT_USER = user;
   db = loadDB(user.companyId);
-  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'none'; hpHideHome();
   document.querySelector('.shell').classList.add('ready');
   initUser();
   renderDashboard();
@@ -692,7 +1475,7 @@ function boot(){
   if(session && session.companyId){
     enterApp(session);
   }else{
-    document.getElementById('authScreen').style.display = 'flex';
+    hpShowHome();
   }
 }
 
@@ -937,60 +1720,26 @@ function renderCategories(){
 }
 
 /* ================= CONNECT WITH BOOKS ================= */
-function booksLinkKey(){ return 'acacia-expenses-books-link_' + CURRENT_USER.companyId; }
-function getLinkedBooksId(){
+function getBooksState(){
+  if(!CURRENT_USER) return null;
   try{
-    const linked = localStorage.getItem(booksLinkKey());
-    if(linked) return linked;
-  }catch(e){}
-  return CURRENT_USER.companyId;
-}
-function getBooksStateForId(id){
-  if(!id) return null;
-  try{
-    const raw = localStorage.getItem('acacia-payroll-state_' + id);
+    const raw = localStorage.getItem('acacia-payroll-state_' + CURRENT_USER.companyId);
     if(!raw) return null;
     return JSON.parse(raw);
   }catch(e){ return null; }
 }
-function getBooksState(){
-  if(!CURRENT_USER) return null;
-  return getBooksStateForId(getLinkedBooksId());
-}
-function connectBooksWithId(){
-  const input = document.getElementById('booksIdInput');
-  const id = input.value.trim();
-  const errEl = document.getElementById('connectIdError');
-  if(!id){ errEl.textContent = 'Enter a Company ID.'; errEl.classList.add('show'); return; }
-  const books = getBooksStateForId(id);
-  if(!books){
-    errEl.textContent = 'No Books account was found with that Company ID. Ask your Books/Payroll admin for the correct ID, or make sure that company has set up Payroll.';
-    errEl.classList.add('show');
-    return;
-  }
-  try{ localStorage.setItem(booksLinkKey(), id); }catch(e){}
-  showToast('Connected to Books');
+function refreshBooksConnection(){
   renderConnectStatus();
-}
-function disconnectBooks(){
-  try{ localStorage.removeItem(booksLinkKey()); }catch(e){}
-  renderConnectStatus();
+  showToast('Connection refreshed');
 }
 function renderConnectStatus(){
   const host = document.getElementById('connectStatusCard');
-  const linkedId = getLinkedBooksId();
-  const isManualLink = linkedId !== CURRENT_USER.companyId;
   const books = getBooksState();
   if(!books){
     host.innerHTML = `<div class="empty-state">
-      <div class="title">Not connected</div>
-      <div class="hint">This account (${CURRENT_USER.company}) doesn't have a Books account yet, so it can't connect automatically. If your company already has an Acacia Payroll / Books account, enter its Company ID below to link it — your Books admin can find this under Payroll Settings → Company.</div>
-      <div class="field" style="max-width:320px;margin:14px auto 0;text-align:left;">
-        <label>Books Company ID</label>
-        <input id="booksIdInput" placeholder="e.g. co-4f8x2p1">
-      </div>
-      <div class="auth-error" id="connectIdError" style="max-width:320px;margin:8px auto 0;"></div>
-      <button class="btn btn-primary" style="margin-top:6px;" onclick="connectBooksWithId()">Connect</button>
+      <div class="title">Not connected yet</div>
+      <div class="hint">This account (${CURRENT_USER.company}) hasn't set up Acacia Payroll / Books. Log in to Acacia Payroll with the same email, then come back here.</div>
+      <button class="btn btn-primary" onclick="refreshBooksConnection()">Connect</button>
     </div>`;
     return;
   }
@@ -1000,12 +1749,10 @@ function renderConnectStatus(){
   const runCount = (books.payRuns||[]).length;
   host.innerHTML = `
     <div class="panel-box" style="margin-bottom:16px;">
-      <h3 style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <span><span class="status-pill status-paid">Connected</span> ${c.name || CURRENT_USER.company}</span>
-        ${isManualLink ? '<button class="btn btn-sm btn-ghost" onclick="disconnectBooks()">Disconnect</button>' : ''}
+      <h3 style="display:flex;align-items:center;gap:8px;">
+        <span class="status-pill status-paid">Connected</span> ${c.name || CURRENT_USER.company}
       </h3>
       <div class="det-grid">
-        <div><div class="k">Company ID</div><div class="v">${linkedId}</div></div>
         <div><div class="k">KRA PIN</div><div class="v">${c.kraPin || '—'}</div></div>
         <div><div class="k">Currency</div><div class="v">${c.currency || '—'}</div></div>
         <div><div class="k">Employees</div><div class="v">${empCount}</div></div>
