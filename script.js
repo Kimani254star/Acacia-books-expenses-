@@ -118,7 +118,7 @@ function hpContact(e){
     try { if ((await rpc('acx_account_state', { p_company: low(cid), p_login: low(login) })) === 'deleted') return 'This account was removed by Acacia support.'; } catch (e) {}
     try {
       var r = await req('acacia_company_status?select=status&company_id=eq.' + enc(cid));
-      if (r.ok) { var j = await r.json(); var s = j[0] && j[0].status; if (s && s !== 'active') return 'Your company account is "' + s + '". Please contact Acacia support.'; }
+      if (r.ok) { var j = await r.json(); var s = j[0] && j[0].status; if (s === 'pending') return 'Your company is waiting for approval by Acacia support. You will be able to sign in as soon as it is approved.'; if (s && s !== 'active') return 'Your company account is "' + s + '". Please contact Acacia support.'; }
     } catch (e) {}
     return null;
   }
@@ -144,7 +144,8 @@ function hpContact(e){
   async function register(o) {
     var salt = newSalt(), h = await hash(o.password, salt);
     var id = await rpc('acx_register_company', { p_company: o.company, p_name: o.name, p_email: low(o.email), p_hash: h, p_salt: salt, p_app: cfg.app });
-    return { companyId: id, passwordHash: h, passwordSalt: salt };
+    var blocked = await gate(id, o.email);
+    return { companyId: id, passwordHash: h, passwordSalt: salt, blocked: blocked };
   }
 
   /* teammates added inside an app (CRM Users & Roles). The app's own role is kept per app; Books sees admin/user */
@@ -342,6 +343,7 @@ async function handleRegister(){
   let user, viaCloud = false;
   try{
     const c = await AcaciaCloud.register({company, name, email, password});
+    if(c.blocked){ showAuthError('registerError','Account created. ' + c.blocked); return; }
     user = {companyId:c.companyId, company, name, email, role:'Administrator', passwordHash:c.passwordHash, passwordSalt:c.passwordSalt};
     viaCloud = true;
   }catch(e){
