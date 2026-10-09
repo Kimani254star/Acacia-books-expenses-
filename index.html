@@ -6,6 +6,8 @@
 <title>Acacia — Expenses</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+<script>window.ACACIA_APPEARANCE={sidebar:'.sidebar',items:'.sidebar .nav-item'};</script>
+<script src="acacia-appearance.js"></script>
 </head>
 <body>
 <!-- ============ PUBLIC HOME PAGE ============ -->
@@ -381,6 +383,7 @@
       <div class="nav-label">Settings</div>
       <div class="nav-item" data-view="categories"><span class="nav-dot"></span>Categories</div>
       <div class="nav-item" data-view="connect"><span class="nav-dot"></span>Connect</div>
+      <div class="nav-item" data-view="appearance"><span class="nav-dot"></span>Appearance</div>
     </div>
   </aside>
 
@@ -527,6 +530,16 @@
     </div>
 
     <!-- CONNECT WITH BOOKS -->
+    <div class="view" id="view-appearance">
+      <div class="view-header">
+        <div>
+          <div class="view-title">Appearance</div>
+          <div class="view-sub">Sidebar colour, text colour, font and font size</div>
+        </div>
+      </div>
+      <div data-acacia-appearance></div>
+    </div>
+
     <div class="view" id="view-connect">
       <div class="view-header">
         <div>
@@ -662,5 +675,6 @@
 <div class="toast" id="toast"></div>
 
 <script src="script.js"></script>
+<script src="acacia-help.js"></script>
 </body>
 </html>

@@ -193,42 +193,207 @@ function hpContact(e){
     return same.find(function (x) { return low(x.email) === low(u.email) && x.companyId === r.companyId; }) || null;
   }
 
-  /* ---- data sync (one JSON blob per company per app) ---- */
+  /* ---- data sync (one JSON blob per company per app) ----
+     Record-level three-way merge + compare-and-swap push, so several people editing the same company at once do not overwrite each other.
+       base = the copy last agreed with the cloud (acx_base_*), local = this browser's copy, remote = the cloud's copy.
+     - records (arrays of objects that have an id) are merged one by one; a record edited on one side and deleted on the other is kept
+     - a field changed on both sides keeps this browser's value; counters (next..., ...number) keep the larger value
+     - a push only succeeds if the cloud copy is still the one we merged with (updated_at must match); otherwise we merge again */
+  var syncTimer = 0, syncBusy = false, pendingRender = false, hookReload = null, hookRender = null;
   function tsKey(c) { return 'acx_ts_' + cfg.app + '_' + (c || ctx.companyId); }
   function dirtyKey(c) { return 'acx_dirty_' + cfg.app + '_' + (c || ctx.companyId); }
-  async function pullRow(app) {
-    var r = await req('acacia_app_data?select=value,updated_at&key=eq.data&company_id=eq.' + enc(ctx.companyId) + '&app=eq.' + enc(app));
-    if (!r.ok) return null; var j = await r.json(); return j[0] || null;
+  function baseKey(c) { return 'acx_base_' + cfg.app + '_' + (c || ctx.companyId); }
+
+  /*MERGE-START*/
+  function canon(v) {
+    if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+    if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + canon(v[k]); }).join(',') + '}';
+    return JSON.stringify(v);
   }
-  async function pushNow() {
-    if (!ctx || !isCloudId(ctx.companyId)) return false;
-    var v = localStorage.getItem(cfg.dataKey(ctx.companyId)); if (v == null) return false;
+  function same(a, b) { return canon(a) === canon(b); }
+  function isObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
+  function idKeyFor(arrs) {
+    var cands = ['id', '_id', 'uid'];
+    for (var i = 0; i < cands.length; i++) {
+      var c = cands[i];
+      var ok = arrs.every(function (a) {
+        var seen = {};
+        return a.every(function (x) {
+          if (!isObj(x) || x[c] == null || x[c] === '') return false;
+          var k = String(x[c]); if (seen[k]) return false; seen[k] = 1; return true;
+        });
+      });
+      if (ok) return c;
+    }
+    return null;
+  }
+  function mergeArr(b, l, r) {
+    var k = idKeyFor([b, l, r]), out = [], seen = {};
+    if (k) {
+      var mb = {}, ml = {}, mr = {};
+      b.forEach(function (x) { mb[x[k]] = x; }); l.forEach(function (x) { ml[x[k]] = x; }); r.forEach(function (x) { mr[x[k]] = x; });
+      var take = function (id) {
+        if (seen[id]) return; seen[id] = 1;
+        var inB = id in mb, inL = id in ml, inR = id in mr;
+        if (inL && inR) out.push(merge3(mb[id], ml[id], mr[id]));
+        else if (inL) { if (!inB || !same(mb[id], ml[id])) out.push(ml[id]); }
+        else if (inR) { if (!inB || !same(mb[id], mr[id])) out.push(mr[id]); }
+      };
+      r.forEach(function (x) { take(x[k]); }); l.forEach(function (x) { take(x[k]); });
+      return out;
+    }
+    /* no ids: treat the array as a set of values */
+    var sb = {}, sl = {}, sr = {};
+    b.forEach(function (x) { sb[canon(x)] = 1; }); l.forEach(function (x) { sl[canon(x)] = 1; }); r.forEach(function (x) { sr[canon(x)] = 1; });
+    var add = function (x) {
+      var c = canon(x); if (seen[c]) return; seen[c] = 1;
+      var inB = c in sb, inL = c in sl, inR = c in sr;
+      if ((inL && inR) || (inL && !inB) || (inR && !inB)) out.push(x);
+    };
+    r.forEach(add); l.forEach(add);
+    return out;
+  }
+  function merge3(b, l, r, name) {
+    if (same(l, r)) return l;
+    if (same(b, l)) return r;
+    if (same(b, r)) return l;
+    if (Array.isArray(l) && Array.isArray(r)) return mergeArr(Array.isArray(b) ? b : [], l, r);
+    if (isObj(l) && isObj(r)) {
+      var bb = isObj(b) ? b : {}, out = {}, keys = {};
+      [l, r, bb].forEach(function (o) { Object.keys(o).forEach(function (k) { keys[k] = 1; }); });
+      Object.keys(keys).forEach(function (k) {
+        var inB = k in bb, inL = k in l, inR = k in r;
+        if (inL && inR) out[k] = merge3(bb[k], l[k], r[k], k);
+        else if (inL) { if (!inB || !same(bb[k], l[k])) out[k] = l[k]; }
+        else if (inR) { if (!inB || !same(bb[k], r[k])) out[k] = r[k]; }
+      });
+      return out;
+    }
+    if (typeof l === 'number' && typeof r === 'number' && /^(next|counter|seq)|(number|counter|seq)$/i.test(name || '')) return Math.max(l, r);
+    return l;
+  }
+  function mergeValue(baseStr, localStr, remoteStr) {
+    var p = function (s) { try { return JSON.parse(s); } catch (e) { return undefined; } };
+    var l = p(localStr), r = p(remoteStr);
+    if (l === undefined) return remoteStr;
+    if (r === undefined) return localStr;
+    return JSON.stringify(merge3(baseStr == null ? undefined : p(baseStr), l, r));
+  }
+  /*MERGE-END*/
+
+  async function getRow() {
+    var r = await req('acacia_app_data?select=value,updated_at&key=eq.data&company_id=eq.' + enc(ctx.companyId) + '&app=eq.' + enc(cfg.app));
+    if (!r.ok) throw err('offline', 'Could not read data (' + r.status + ')');
+    var j = await r.json(), row = j[0] || null;
+    if (row && typeof row.value !== 'string') row.value = JSON.stringify(row.value);
+    return row;
+  }
+  /* compare-and-swap write: succeeds only if the cloud copy still has updated_at = prevTs (or does not exist yet when prevTs is empty) */
+  async function casPush(v, prevTs) {
+    var now = new Date().toISOString(), r, j;
     try {
-      var r = await req('acacia_app_data?on_conflict=company_id,app,key', { method: 'POST', headers: Object.assign({}, H, { Prefer: 'resolution=merge-duplicates,return=representation' }), body: JSON.stringify({ company_id: ctx.companyId, app: cfg.app, key: 'data', value: v }) });
-      if (r.ok) { var j = await r.json(); rawSet.call(localStorage, tsKey(), (j[0] && j[0].updated_at) || ''); localStorage.removeItem(dirtyKey()); return true; }
+      if (!prevTs) {
+        r = await req('acacia_app_data', { method: 'POST', headers: Object.assign({}, H, { Prefer: 'return=representation' }), body: JSON.stringify({ company_id: ctx.companyId, app: cfg.app, key: 'data', value: v, updated_at: now }) });
+        if (r.status === 409) return 'conflict';
+      } else {
+        r = await req('acacia_app_data?key=eq.data&company_id=eq.' + enc(ctx.companyId) + '&app=eq.' + enc(cfg.app) + '&updated_at=eq.' + enc(prevTs), { method: 'PATCH', headers: Object.assign({}, H, { Prefer: 'return=representation' }), body: JSON.stringify({ value: v, updated_at: now }) });
+      }
+      if (!r.ok) return 'error';
+      j = await r.json();
+      if (!j[0]) return 'conflict';
+      return { ts: j[0].updated_at };
+    } catch (e) { return 'error'; }
+  }
+  function commit(v, ts) {
+    rawSet.call(localStorage, tsKey(), ts || '');
+    rawSet.call(localStorage, baseKey(), v);
+    localStorage.removeItem(dirtyKey());
+  }
+  async function syncNow() {
+    if (!ctx || !isCloudId(ctx.companyId) || syncBusy) return false;
+    syncBusy = true;
+    var changed = false;
+    try {
+      for (var n = 0; n < 4; n++) {
+        var dk = cfg.dataKey(ctx.companyId), local = localStorage.getItem(dk), res, row = await getRow();
+        var last = localStorage.getItem(tsKey()), dirty = localStorage.getItem(dirtyKey()) === '1';
+        if (!row) {
+          if (local == null) break;
+          res = await casPush(local, null);
+          if (res === 'conflict') continue;
+          if (res === 'error') break;
+          if (localStorage.getItem(dk) === local) commit(local, res.ts);
+          break;
+        }
+        if (row.updated_at === last) {                       /* cloud unchanged since our last sync */
+          if (!dirty || local == null) break;
+          if (local === row.value) { commit(local, row.updated_at); break; }
+          res = await casPush(local, row.updated_at);
+          if (res === 'conflict') continue;
+          if (res === 'error') break;
+          if (localStorage.getItem(dk) === local) commit(local, res.ts);
+          break;
+        }
+        if (!dirty || local == null) {                       /* cloud moved on, nothing of ours to keep: take the cloud copy */
+          rawSet.call(localStorage, dk, row.value); commit(row.value, row.updated_at); changed = true; break;
+        }
+        var merged = mergeValue(localStorage.getItem(baseKey()), local, row.value);
+        if (merged === row.value) {
+          if (localStorage.getItem(dk) === local) { rawSet.call(localStorage, dk, merged); commit(merged, row.updated_at); changed = true; }
+          break;
+        }
+        res = await casPush(merged, row.updated_at);
+        if (res === 'conflict') continue;
+        if (localStorage.getItem(dk) !== local) break;       /* edited while we were saving: leave it, the next sync merges it in */
+        rawSet.call(localStorage, dk, merged); changed = true;
+        if (res === 'error') { rawSet.call(localStorage, baseKey(), row.value); break; }
+        commit(merged, res.ts);
+        break;
+      }
     } catch (e) {}
-    return false;
+    syncBusy = false;
+    if (changed) applyRemote();
+    return changed;
   }
   function schedule() {
     if (!ctx || !isCloudId(ctx.companyId)) return;
     rawSet.call(localStorage, dirtyKey(), '1');
-    clearTimeout(timer); timer = setTimeout(pushNow, 2500);
+    clearTimeout(timer); timer = setTimeout(function () { syncNow(); }, 2500);
   }
+  /* page closing: one last compare-and-swap write; it only goes through if nobody else saved since our last sync (otherwise it stays unsaved and is merged next time) */
   function flush() {
     if (!ctx || !isCloudId(ctx.companyId) || localStorage.getItem(dirtyKey()) !== '1') return;
     clearTimeout(timer);
-    var v = localStorage.getItem(cfg.dataKey(ctx.companyId)); if (v == null) return;
+    var v = localStorage.getItem(cfg.dataKey(ctx.companyId)), last = localStorage.getItem(tsKey());
+    if (v == null || !last) return;
+    var dk = dirtyKey();
     try {
-      fetch(URL_ + '/rest/v1/acacia_app_data?on_conflict=company_id,app,key', { method: 'POST', keepalive: v.length < 60000, headers: Object.assign({}, H, { Prefer: 'resolution=merge-duplicates,return=minimal' }), body: JSON.stringify({ company_id: ctx.companyId, app: cfg.app, key: 'data', value: v }) }).then(function (r) { if (r.ok) localStorage.removeItem(dirtyKey()); }).catch(function () {});
+      fetch(URL_ + '/rest/v1/acacia_app_data?key=eq.data&company_id=eq.' + enc(ctx.companyId) + '&app=eq.' + enc(cfg.app) + '&updated_at=eq.' + enc(last), { method: 'PATCH', keepalive: v.length < 60000, headers: Object.assign({}, H, { Prefer: 'return=representation' }), body: JSON.stringify({ value: v, updated_at: new Date().toISOString() }) })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j && j.length) localStorage.removeItem(dk); })
+        .catch(function () {});
     } catch (e) {}
   }
-  async function pullData() {
-    var row = await pullRow(cfg.app);
-    var dirty = localStorage.getItem(dirtyKey()) === '1', last = localStorage.getItem(tsKey());
-    if (row && !dirty && row.updated_at !== last) { rawSet.call(localStorage, cfg.dataKey(ctx.companyId), row.value); rawSet.call(localStorage, tsKey(), row.updated_at); }
-    else if (!row) { if (localStorage.getItem(cfg.dataKey(ctx.companyId)) != null) await pushNow(); }
-    else if (dirty) await pushNow();
+  async function pullData() { await syncNow(); }
+
+  /* the app registers two callbacks: reload (re-read its in-memory data from storage) and render (redraw the current screen) */
+  function onRemote(reload, render) { hookReload = reload; hookRender = render; }
+  function typing() {
+    var a = document.activeElement;
+    return !!a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable) && a.type !== 'button' && a.type !== 'checkbox' && a.type !== 'radio';
   }
+  function paint() {
+    if (!pendingRender || typing()) return;
+    pendingRender = false;
+    try { if (hookRender) hookRender(); } catch (e) { console.error(e); }
+  }
+  function applyRemote() {
+    try { if (hookReload) hookReload(); } catch (e) { console.error(e); }
+    pendingRender = true; paint();
+  }
+  function startPoll() { clearInterval(syncTimer); syncTimer = setInterval(function () { if (document.hidden) return; paint(); syncNow(); }, 30000); }
+  function stopPoll() { clearInterval(syncTimer); syncTimer = 0; }
+
   /* read-only copies of another app's data (e.g. Expenses reads Payroll) */
   async function pullExtras() {
     var ex = cfg.readFrom || [];
@@ -249,10 +414,10 @@ function hpContact(e){
     if (!isCloudId(ctx.companyId)) return 'local';
     var msg = await gate(ctx.companyId, ctx.email); if (msg) return 'blocked:' + msg;
     try { await pullData(); await pullExtras(); } catch (e) {}
-    heartbeat(); clearInterval(hbTimer); hbTimer = setInterval(function () { heartbeat(); }, 3e5);
+    startPoll(); heartbeat(); clearInterval(hbTimer); hbTimer = setInterval(function () { heartbeat(); }, 3e5);
     return 'ok';
   }
-  function stop() { flush(); clearInterval(hbTimer); ctx = null; }
+  function stop() { flush(); stopPoll(); clearInterval(hbTimer); ctx = null; }
 
   function init(c) {
     cfg = c;
@@ -261,7 +426,7 @@ function hpContact(e){
       try { if (this === w.localStorage && ctx && k === cfg.dataKey(ctx.companyId)) schedule(); } catch (e) {}
     };
     w.addEventListener('pagehide', flush);
-    document.addEventListener('visibilitychange', function () { if (document.hidden) flush(); });
+    document.addEventListener('visibilitychange', function () { if (document.hidden) flush(); else syncNow(); });
   }
 
   /* sign-up plan note: reads #regPlan / #regBilling and shows what the company will pay */
@@ -274,7 +439,7 @@ function hpContact(e){
   };
   setTimeout(function () { try { if (w.acxPlanChanged) w.acxPlanChanged(); } catch (e) {} }, 0);
 
-  w.AcaciaCloud = { init: init, signIn: signIn, register: register, addUser: addUser, setRole: setRole, removeUser: removeUser, cacheUser: cacheUser, verifyLocal: verifyLocal, migrate: migrate, start: start, stop: stop, flush: flush, isCloudId: isCloudId, gate: gate, URL: URL_, KEY: KEY_, rpc: rpc, req: req };
+  w.AcaciaCloud = { onRemote: onRemote, sync: syncNow, init: init, signIn: signIn, register: register, addUser: addUser, setRole: setRole, removeUser: removeUser, cacheUser: cacheUser, verifyLocal: verifyLocal, migrate: migrate, start: start, stop: stop, flush: flush, isCloudId: isCloudId, gate: gate, URL: URL_, KEY: KEY_, rpc: rpc, req: req };
 })(window);
 ;
 /* ================= DATA LAYER ================= */
@@ -324,6 +489,7 @@ let currentDetailId = null;
 let editingId = null;
 
 AcaciaCloud.init({app:'Expenses', dataKey:dataKeyFor, readFrom:[{app:'Payroll', dataKey:function(c){ return 'acacia-payroll-state_' + c; }}]});
+AcaciaCloud.onRemote(function(){ if(!CURRENT_USER) return; db = loadDB(CURRENT_USER.companyId); }, function(){ if(!CURRENT_USER) return; renderDashboard(); renderExpenseTable(); renderSuppliers(); renderCategories(); renderReports(); });
 function getUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); }catch(e){ return []; } }
 function saveUsers(list){ try{ localStorage.setItem(USERS_KEY, JSON.stringify(list)); }catch(e){ console.error(e); } }
 function getSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }catch(e){ return null; } }
