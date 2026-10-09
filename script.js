@@ -1,3 +1,4 @@
+window.expSort = window.expSort || {key:"date", dir:-1};
 /* Public home page: single-view navigation, same behaviour as the Support site */
   function hpMore(btn){
     var card=btn.closest('.hp-tier');
@@ -143,7 +144,7 @@ function hpContact(e){
 
   async function register(o) {
     var salt = newSalt(), h = await hash(o.password, salt);
-    var id = await rpc('acx_register_company', { p_company: o.company, p_name: o.name, p_email: low(o.email), p_hash: h, p_salt: salt, p_app: cfg.app });
+    var id = await rpc('acx_register_company', { p_company: o.company, p_name: o.name, p_email: low(o.email), p_hash: h, p_salt: salt, p_app: cfg.app, p_plan: o.plan || '', p_billing: o.billing || 'monthly' });
     var blocked = await gate(id, o.email);
     return { companyId: id, passwordHash: h, passwordSalt: salt, blocked: blocked };
   }
@@ -263,6 +264,16 @@ function hpContact(e){
     document.addEventListener('visibilitychange', function () { if (document.hidden) flush(); });
   }
 
+  /* sign-up plan note: reads #regPlan / #regBilling and shows what the company will pay */
+  w.acxPlanChanged = function () {
+    var s = document.getElementById('regPlan'), b = document.getElementById('regBilling'), n = document.getElementById('regPlanNote');
+    if (!s || !n) return;
+    var o = s.options[s.selectedIndex], p = Number((o && o.getAttribute('data-price')) || 0), y = !!b && b.value === 'yearly';
+    var f = function (x) { return 'KES ' + x.toLocaleString('en-US'); };
+    n.textContent = y ? f(p * 10) + ' for the year (2 months free). Billed after Acacia support approves your account.' : f(p) + ' per month. Billed after Acacia support approves your account.';
+  };
+  setTimeout(function () { try { if (w.acxPlanChanged) w.acxPlanChanged(); } catch (e) {} }, 0);
+
   w.AcaciaCloud = { init: init, signIn: signIn, register: register, addUser: addUser, setRole: setRole, removeUser: removeUser, cacheUser: cacheUser, verifyLocal: verifyLocal, migrate: migrate, start: start, stop: stop, flush: flush, isCloudId: isCloudId, gate: gate, URL: URL_, KEY: KEY_, rpc: rpc, req: req };
 })(window);
 ;
@@ -342,7 +353,7 @@ async function handleRegister(){
   const users = getUsers();
   let user, viaCloud = false;
   try{
-    const c = await AcaciaCloud.register({company, name, email, password});
+    const c = await AcaciaCloud.register({company, name, email, password, plan:(document.getElementById('regPlan')||{}).value||'', billing:(document.getElementById('regBilling')||{}).value||'monthly'});
     if(c.blocked){ showAuthError('registerError','Account created. ' + c.blocked); return; }
     user = {companyId:c.companyId, company, name, email, role:'Administrator', passwordHash:c.passwordHash, passwordSalt:c.passwordSalt};
     viaCloud = true;
@@ -578,7 +589,9 @@ function renderExpenseTable(){
     e.expNo.toLowerCase().includes(textF));
   if(statusF) list = list.filter(e=>e.status===statusF);
   if(catF) list = list.filter(e=>e.category===catF);
-  list.sort((a,b)=> b.date.localeCompare(a.date) || b.expNo.localeCompare(a.expNo));
+  const k=window.expSort.key, d=window.expSort.dir;
+  list.sort((a,b)=>{ let x=a[k], y=b[k]; if(k==='total'){ x=Number(x);y=Number(y); return d*(x-y); }
+    const c=String(x||'').localeCompare(String(y||'')); return d*(c || b.expNo.localeCompare(a.expNo)); });
 
   document.getElementById('expCountLine').textContent = `${db.expenses.length} expense${db.expenses.length===1?'':'s'}`;
 
@@ -598,8 +611,7 @@ function renderExpenseTable(){
 
   host.innerHTML = `<table>
     <thead><tr>
-      <th>Date</th><th>Expense #</th><th>Description</th><th>Supplier</th>
-      <th>Category</th><th>Tax</th><th style="text-align:right;">Amount</th><th>Status</th>
+      ${[['date','Date'],['expNo','Cost #'],['description','Description'],['supplierName','Vendor'],['category','Category'],['taxRate','VAT / Tax'],['total','Amount'],['status','Status']].map(([k,l])=>`<th style="cursor:pointer;${k==='total'?'text-align:right;':''}" onclick="sortCosts('${k}')">${l}${window.expSort.key===k?(window.expSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}
     </tr></thead>
     <tbody>
       ${list.map(e=>`
@@ -825,8 +837,9 @@ function onAttachChange(){
   document.getElementById(id).addEventListener('input', recalcTotals);
 });
 function recalcTotals(){
-  const amount = parseFloat(document.getElementById('f_amount').value) || 0;
+  let amount = parseFloat(document.getElementById('f_amount').value) || 0;
   const rate = parseFloat(document.getElementById('f_tax').value) || 0;
+  if(document.getElementById('f_vatincl').checked && rate>0) amount = amount/(1+rate/100);
   const taxAmt = amount * rate / 100;
   document.getElementById('f_taxamt').value = fmtPlain(taxAmt);
   document.getElementById('f_total').value = fmtPlain(amount + taxAmt);
@@ -836,7 +849,7 @@ function saveExpense(statusIfNew){
   const date = document.getElementById('f_date').value;
   const account = document.getElementById('f_account').value;
   const desc = document.getElementById('f_desc').value.trim();
-  const amount = parseFloat(document.getElementById('f_amount').value);
+  let amount = parseFloat(document.getElementById('f_amount').value);
 
   if(!date || !account || !desc || isNaN(amount)){
     showToast('Please fill in date, account, description and amount');
@@ -844,6 +857,7 @@ function saveExpense(statusIfNew){
   }
 
   const rate = parseFloat(document.getElementById('f_tax').value) || 0;
+  if(document.getElementById('f_vatincl').checked && rate>0) amount = Math.round(amount/(1+rate/100)*100)/100;
   const taxAmount = Math.round((amount * rate / 100) * 100) / 100;
   const total = Math.round((amount + taxAmount) * 100) / 100;
   const supplierId = document.getElementById('f_supplier').value;
@@ -1005,3 +1019,53 @@ function exportCSV(){
 
 /* ================= INIT ================= */
 boot();
+
+
+/* ===== Operational Costs: sort, bulk entry, CSV import (mirrors Books Operational Costs tab) ===== */
+window.expSort={key:'date',dir:-1};
+function sortCosts(k){ window.expSort = {key:k, dir: window.expSort.key===k ? -window.expSort.dir : (k==='date'||k==='total'?-1:1)}; renderExpenseTable(); }
+function newCostRecord(r){
+  const rate=Number(r.taxRate)||0, amount=Number(r.amount)||0, taxAmount=Math.round(amount*rate)/100, total=Math.round((amount+taxAmount)*100)/100;
+  const expNo='EXP-'+String(db.nextExpNo).padStart(5,'0'); db.nextExpNo++;
+  return {id:'exp_'+Date.now()+'_'+db.nextExpNo,expNo,date:r.date||todayISO(),category:r.category,description:r.description,reference:'',currency:'KES',amount,taxRate:rate,taxAmount,total,supplierId:null,supplierName:r.vendor||'',paymentAccount:'',paymentStatus:'Unpaid',status:'Draft',notes:r.notes||'',attachmentName:''};
+}
+function openBulkCosts(){
+  window.bulkRows=window.bulkRows||0; closeBulkCosts();
+  const d=document.createElement('div'); d.id='bulkCosts';
+  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  d.innerHTML=`<div style="background:var(--card,#fff);color:inherit;border-radius:12px;max-width:980px;width:100%;max-height:90vh;overflow:auto;padding:20px">
+    <h3 style="margin:0 0 12px">Bulk Operational Costs</h3>
+    <table style="width:100%"><thead><tr><th>Date</th><th>Description</th><th>Vendor</th><th>Category</th><th>Amount (excl.)</th><th>VAT %</th><th></th></tr></thead><tbody id="bulkBody"></tbody></table>
+    <div style="margin-top:12px;display:flex;gap:8px"><button class="btn" onclick="addBulkCostRow()">+ Add Row</button><span style="flex:1"></span><button class="btn" onclick="closeBulkCosts()">Cancel</button><button class="btn btn-primary" onclick="saveBulkCosts()">Save All</button></div></div>`;
+  document.body.appendChild(d); for(let i=0;i<3;i++) addBulkCostRow();
+}
+function closeBulkCosts(){ document.getElementById('bulkCosts')?.remove(); }
+function addBulkCostRow(){
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input type="date" class="bc-date" value="${todayISO()}"></td><td><input class="bc-desc"></td><td><input class="bc-vendor"></td>
+  <td><select class="bc-cat">${allCategoryNames().map(c=>`<option>${escapeHtml(c)}</option>`).join('')}</select></td>
+  <td><input type="number" min="0" step="0.01" class="bc-amt" style="width:110px"></td>
+  <td><select class="bc-vat"><option value="0">0</option><option value="16" selected>16</option><option value="8">8</option></select></td>
+  <td><button class="btn btn-sm" onclick="this.closest('tr').remove()">✕</button></td>`;
+  document.getElementById('bulkBody').appendChild(tr);
+}
+function saveBulkCosts(){
+  const rows=[...document.querySelectorAll('#bulkBody tr')].map(tr=>({date:tr.querySelector('.bc-date').value,description:tr.querySelector('.bc-desc').value.trim(),vendor:tr.querySelector('.bc-vendor').value.trim(),category:tr.querySelector('.bc-cat').value,amount:parseFloat(tr.querySelector('.bc-amt').value),taxRate:tr.querySelector('.bc-vat').value}))
+    .filter(r=>r.description&&!isNaN(r.amount));
+  if(!rows.length){ showToast('Enter at least one row with a description and amount'); return; }
+  rows.forEach(r=>db.expenses.push(newCostRecord(r))); saveDB(); closeBulkCosts(); renderExpenseTable(); if(typeof renderDashboard==='function') renderDashboard(); showToast(rows.length+' cost(s) saved');
+}
+function importCostsCSV(ev){
+  const f=ev.target.files[0]; if(!f) return; const rd=new FileReader();
+  rd.onload=()=>{
+    const lines=String(rd.result).split(/\r?\n/).filter(l=>l.trim()); if(lines.length<2){ showToast('CSV has no data rows'); return; }
+    const split=l=>(l.match(/("([^"]|"")*"|[^,]*)(,|$)/g)||[]).map(c=>c.replace(/,$/,'').replace(/^"|"$/g,'').replace(/""/g,'"').trim());
+    const head=split(lines[0]).map(x=>x.toLowerCase()); const ix=n=>head.findIndex(h=>h.includes(n));
+    let n=0;
+    lines.slice(1).forEach(l=>{ const c=split(l); const amount=parseFloat(c[ix('amount')]); const description=c[ix('description')];
+      if(!description||isNaN(amount)) return;
+      db.expenses.push(newCostRecord({date:c[ix('date')]||todayISO(),description,vendor:c[ix('vendor')]||c[ix('supplier')],category:c[ix('category')]||allCategoryNames()[0],amount,taxRate:parseFloat(c[ix('vat')])||parseFloat(c[ix('tax')])||0})); n++; });
+    saveDB(); renderExpenseTable(); showToast(n+' cost(s) imported'); ev.target.value='';
+  };
+  rd.readAsText(f);
+}

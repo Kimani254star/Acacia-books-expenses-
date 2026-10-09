@@ -167,160 +167,24 @@
   <section class="hp-section-alt hp-page" id="hp-pricing" data-page="pricing">
     <div class="hp-title">
       <span>Pricing</span>
-      <h2>Pricing that grows with the business</h2>
-      <p>Start on Free, move up a tier the moment you need it &mdash; every plan shares the same data, so nothing gets re-entered.</p>
+      <h2>Simple pricing</h2>
+      <p>One plan with everything included. New accounts are approved by Acacia support before you can sign in.</p>
     </div>
     <div class="hp-billing">
       <span>Monthly</span>
       <label class="hp-switch"><input type="checkbox" id="hpBilling" onchange="hpBillingToggle()" aria-label="Bill yearly"><i></i></label>
       <span>Yearly <em>(2 months free)</em></span>
     </div>
-    <div class="hp-tiers6">
+    <div class="hp-tiers6" style="grid-template-columns:repeat(auto-fit,minmax(260px,340px));justify-content:center">
       <div class="hp-tier">
-        <h3>Free</h3>
-        <div class="hp-tag">Start your business</div>
-        <div class="hp-price"><span class="hp-amt" data-month="0" data-year="0">KES 0</span><small class="hp-per">/mo</small></div>
-        <ul class="hp-feats">
-          <li>📦 Inventory &amp; Stock Movements</li>
-          <li>👥 Customers, Invoices &amp; Receipts</li>
-          <li>🚚 Suppliers &amp; Supplier Payments</li>
-          <li>🧾 Operational Costs</li>
-          <li>🧮 Manual Journals &amp; Chart of Accounts</li>
-          <li class="hp-extra">🏦 Current Accounts</li>
-          <li class="hp-extra">💵 Employees, Earnings &amp; Attendance</li>
-          <li class="hp-extra">📁 Files &amp; Recycle Bin</li>
-          <li class="hp-extra">⚙️ Org Profile, Preferences, Users</li>
-          <li class="hp-extra">📬 Acacia Mail included free</li>
-          <li class="hp-extra">📏 1 user · 100 products · 100 customers · 25 invoices/mo · 1 warehouse · 100 MB</li>
-        </ul>
-        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="6">Show 6 more features &#9662;</button>
-        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Get Started</a>
+        
+        <h3>Expenses</h3>
+        <div class="hp-tag">Everything included</div>
+        <div class="hp-price"><span class="hp-amt" data-month="5000" data-year="50000">KES 5,000</span><small class="hp-per">/mo</small></div>
+        <ul class="hp-feats"><li>Record and categorise your expenses</li><li>Keep your expense data per company</li><li>Works with your Acacia Payroll data</li><li>Reports on spending</li><li>Your whole team on one account</li></ul>
+        <a href="#register" class="hp-tier-btn" onclick="hpShowLogin('register');return false;">Choose Expenses</a>
       </div>
-      <div class="hp-tier">
-        <h3>Starter</h3>
-        <div class="hp-tag">Run your daily operations</div>
-        <div class="hp-price"><span class="hp-amt" data-month="1500" data-year="15000">KES 1,500</span><small class="hp-per">/mo</small></div>
-        <ul class="hp-feats">
-          <li><strong>Everything in Free, plus:</strong></li>
-          <li>🧾 Quotes &amp; Delivery</li>
-          <li>📄 Customer &amp; Supplier Statements</li>
-          <li>📥 GRN &amp; Supplier Bills</li>
-          <li>🏬 Warehouses, Shipments &amp; Price Lists</li>
-          <li class="hp-extra">🧮 VAT &amp; Transaction Locking</li>
-          <li class="hp-extra">🔗 Integrations &amp; Settings Templates</li>
-          <li class="hp-extra">🗂️ Subscription Plans tracking</li>
-          <li class="hp-extra">📏 3 users · 1,000 products · 500 customers · 200 invoices/mo · 2 warehouses · 1 GB</li>
-        </ul>
-        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
-        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
-      </div>
-      <div class="hp-tier featured">
-        <div class="hp-pop">Most popular</div>
-        <h3>Pro</h3>
-        <div class="hp-tag">Run your complete business</div>
-        <div class="hp-price"><span class="hp-amt" data-month="3500" data-year="35000">KES 3,500</span><small class="hp-per">/mo</small></div>
-        <ul class="hp-feats">
-          <li><strong>Everything in Starter, plus:</strong></li>
-          <li>🧾 Sales Orders &amp; Purchase Orders</li>
-          <li>↩️ Credit Notes, Debit Notes &amp; Returns</li>
-          <li>📦 Inventory Costing</li>
-          <li>🧮 Recurring Journals &amp; Currency Adjustments</li>
-          <li class="hp-extra">📊 Budgets</li>
-          <li class="hp-extra">💵 Gross Pay &amp; Payslips</li>
-          <li class="hp-extra">🗂️ Projects</li>
-          <li class="hp-extra">📏 10 users · 5,000 products · 2,500 customers · 1,000 invoices/mo · 5 warehouses · 5 GB</li>
-        </ul>
-        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
-        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
-      </div>
-      <div class="hp-tier">
-        <h3>Business</h3>
-        <div class="hp-tag">Automate and scale</div>
-        <div class="hp-price"><span class="hp-amt" data-month="7500" data-year="75000">KES 7,500</span><small class="hp-per">/mo</small></div>
-        <ul class="hp-feats">
-          <li><strong>Everything in Pro, plus:</strong></li>
-          <li>⚡ Bulk &amp; Recurring Invoices</li>
-          <li>⚡ Bulk Billing &amp; Bulk Costing</li>
-          <li>🧮 Tax Payments &amp; Tax Adjustments</li>
-          <li>🏛️ Non-Current Assets, Liabilities &amp; Equity</li>
-          <li class="hp-extra">💵 Statutory Deductions &amp; Payroll Reports</li>
-          <li class="hp-extra">📈 Project Revenue</li>
-          <li class="hp-extra">⚙️ System Configuration &amp; Integrations Hub</li>
-          <li class="hp-extra">🔍 User Activity</li>
-          <li class="hp-extra">📏 25 users · 25,000 products · 10,000 customers · 5,000 invoices/mo · 15 warehouses · 25 GB</li>
-        </ul>
-        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="5">Show 5 more features &#9662;</button>
-        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
-      </div>
-      <div class="hp-tier">
-        <h3>Enterprise</h3>
-        <div class="hp-tag">Control your organization</div>
-        <div class="hp-price hp-custom">Custom</div>
-        <ul class="hp-feats">
-          <li><strong>Everything in Business, plus:</strong></li>
-          <li>👥 Custom user limits</li>
-          <li>💾 Custom storage</li>
-          <li>🔢 Custom transaction limits</li>
-          <li>🛡️ Advanced administration &amp; controls</li>
-          <li class="hp-extra">📈 Advanced reporting</li>
-          <li class="hp-extra">🔗 Enterprise integrations</li>
-          <li class="hp-extra">⚙️ Dedicated configuration</li>
-          <li class="hp-extra">🤝 Custom support arrangements</li>
-        </ul>
-        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="4">Show 4 more features &#9662;</button>
-        <a href="#contact" data-scroll class="hp-tier-btn">Talk to Sales</a>
-      </div>
-      <div class="hp-tier">
-        <h3>All Access</h3>
-        <div class="hp-tag">Everything Acacia</div>
-        <div class="hp-price"><span class="hp-amt" data-month="15000" data-year="150000">KES 15,000</span><small class="hp-per">/mo</small></div>
-        <ul class="hp-feats">
-          <li><strong>Everything in Acacia Books, plus:</strong></li>
-          <li>📬 Acacia Mail</li>
-          <li>🤝 Acacia Books CRM</li>
-          <li>🗂️ Acacia Projects</li>
-          <li>💵 Acacia Payroll</li>
-          <li class="hp-extra">🛒 Acacia Sell</li>
-          <li class="hp-extra">✅ No separate companion-app subscriptions</li>
-          <li class="hp-extra">📏 Enterprise-level or custom limits</li>
-        </ul>
-        <button type="button" class="hp-more" onclick="hpMore(this)" data-n="3">Show 3 more features &#9662;</button>
-        <a href="https://acacia-books.vercel.app/" target="_blank" rel="noopener" class="hp-tier-btn">Choose</a>
-      </div>
-    </div>
-
-    <div class="hp-subhead"><h3>Companion apps</h3><p>Add them to any plan, or get them all with All Access.</p></div>
-    <div class="hp-tablewrap">
-      <table class="hp-table">
-        <thead><tr><th>Companion App</th><th>Add-on price</th><th>All Access</th></tr></thead>
-        <tbody>
-          <tr><td>&#128236; Acacia Mail</td><td>Free</td><td class="hp-yes">&#10003; Included</td></tr>
-          <tr><td>&#129309; Acacia Books CRM</td><td>KES 1,200/month</td><td class="hp-yes">&#10003; Included</td></tr>
-          <tr><td>&#128194; Acacia Projects</td><td>KES 1,500/month</td><td class="hp-yes">&#10003; Included</td></tr>
-          <tr><td>&#128181; Acacia Payroll</td><td>KES 2,000/month</td><td class="hp-yes">&#10003; Included</td></tr>
-          <tr><td>&#128722; Acacia Sell</td><td>KES 2,500/month</td><td class="hp-yes">&#10003; Included</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="hp-subhead"><h3>Usage limits</h3><p>Every plan shares the same data &mdash; only the ceilings change.</p></div>
-    <div class="hp-tablewrap">
-      <table class="hp-table hp-limits">
-        <thead><tr><th>Limit</th><th>Free</th><th>Starter</th><th>Pro</th><th>Business</th><th>Enterprise</th></tr></thead>
-        <tbody>
-          <tr><th>Users</th><td>1</td><td>3</td><td>10</td><td>25</td><td>Custom</td></tr>
-          <tr><th>Warehouses</th><td>1</td><td>2</td><td>5</td><td>15</td><td>Custom</td></tr>
-          <tr><th>Customers</th><td>100</td><td>500</td><td>2,500</td><td>10,000</td><td>Custom</td></tr>
-          <tr><th>Suppliers</th><td>50</td><td>250</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
-          <tr><th>Products</th><td>100</td><td>1,000</td><td>5,000</td><td>25,000</td><td>Custom</td></tr>
-          <tr><th>Invoices / month</th><td>25</td><td>200</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
-          <tr><th>Bills / month</th><td>25</td><td>200</td><td>1,000</td><td>5,000</td><td>Custom</td></tr>
-          <tr><th>Projects</th><td>0</td><td>0</td><td>10</td><td>50</td><td>Custom</td></tr>
-          <tr><th>Payroll employees</th><td>5</td><td>25</td><td>100</td><td>500</td><td>Custom</td></tr>
-          <tr><th>File storage</th><td>100 MB</td><td>1 GB</td><td>5 GB</td><td>25 GB</td><td>Custom</td></tr>
-        </tbody>
-      </table>
-    </div>
+</div>
   </section>
 
   <section class="hp-section hp-page" id="hp-faq" data-page="faq">
@@ -473,7 +337,10 @@
         <div class="field"><label>Your name</label><input id="regName" placeholder="e.g. Wanjiru Kariuki"></div>
         <div class="field"><label>Email address</label><input id="regEmail" type="email" autocomplete="username" placeholder="you@company.co.ke"></div>
         <div class="field"><label>Password</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
-        <button class="btn btn-primary auth-submit" onclick="handleRegister()">Create Account</button>
+        <div class="field"><label>Plan</label><select id="regPlan" onchange="acxPlanChanged()"><option value="expenses_standard" data-price="5000">Expenses &mdash; KES 5,000 / month</option></select></div>
+        <div class="field"><label>Billing</label><select id="regBilling" onchange="acxPlanChanged()"><option value="monthly">Monthly</option><option value="yearly">Full year (2 months free)</option></select></div>
+        <div id="regPlanNote" style="font-size:12px;color:#64748b;margin:-2px 0 10px"></div>
+                <button class="btn btn-primary auth-submit" onclick="handleRegister()">Create Account</button>
         <div class="auth-switch">Already have an account? <a onclick="switchAuthTab('login')">Log in</a></div>
       </div>
     </div>
@@ -494,7 +361,7 @@
 
     <div class="nav-group">
       <div class="nav-label">Transactions</div>
-      <div class="nav-item" data-view="expenses"><span class="nav-dot"></span>Expenses</div>
+      <div class="nav-item" data-view="expenses"><span class="nav-dot"></span>Operational Costs</div>
       <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Bills</div>
       <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Payments</div>
       <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Recurring Expenses</div>
@@ -545,7 +412,7 @@
           <div class="view-sub" id="dashDateLine"></div>
         </div>
         <div class="toolbar">
-          <button class="btn btn-primary" onclick="openNewExpense()">＋ New Expense</button>
+          <button class="btn" onclick="document.getElementById('csvImport').click()">Import CSV</button><input type="file" id="csvImport" accept=".csv" class="hidden" style="display:none" onchange="importCostsCSV(event)"><button class="btn" onclick="openBulkCosts()">Bulk Entry</button><button class="btn btn-primary" onclick="openNewExpense()">＋ Log Cost</button>
         </div>
       </div>
 
@@ -576,7 +443,7 @@
     <div class="view" id="view-expenses">
       <div class="view-header">
         <div>
-          <div class="view-title">Expenses</div>
+          <div class="view-title">Operational Costs</div>
           <div class="view-sub" id="expCountLine">0 expenses</div>
         </div>
         <div class="toolbar">
@@ -744,6 +611,7 @@
           <option value="8">VAT 8%</option>
         </select>
       </div>
+      <div class="field"><label>Amount includes VAT</label><input type="checkbox" id="f_vatincl" onchange="recalcTotals()" style="width:auto"></div>
       <div class="field readonly"><label>Tax Amount</label><input type="text" id="f_taxamt" disabled></div>
 
       <div class="field readonly full"><label>Total</label><input type="text" id="f_total" disabled></div>
