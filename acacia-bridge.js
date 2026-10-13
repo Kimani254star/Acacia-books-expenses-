@@ -1,5 +1,5 @@
 /* acacia-bridge.js (v2) — keeps Customers, Suppliers and Invoices in step with Acacia Books for the same company.
- * Used by Sell, CRM and Expenses (same file). Needs acacia_cross_app_sync.sql (v2) run once in Supabase and
+ * Used by Sell, CRM, Expenses, Payroll and Projects (same file). Needs acacia_cross_app_sync.sql (v2) run once in Supabase and
  * acacia-app-inbox.js added to Books.
  *  - Books <-> app: customers / suppliers / invoices, including edits to invoice lines.
  *  - Deletes: customers & suppliers sync both ways. Invoices deleted in Books are removed here; invoices deleted
@@ -22,9 +22,9 @@
   var today = function () { return new Date().toISOString().slice(0, 10); };
 
   var APP = null, busy = false, timer = 0, selfSave = false;
-  function db() { try { return DB; } catch (e) { try { return (0, eval)('db'); } catch (e2) { return null; } } }
+  function db() { try { return DB; } catch (e) { try { return (0, eval)('db'); } catch (e2) { try { return (0, eval)('state'); } catch (e3) { return null; } } } }
   function user() { try { return CURRENT_USER; } catch (e) { return null; } }
-  function detect() { var d = db(); if (!d) return null; if (d.suppliers && d.expenses) return 'expenses'; if (d.contacts && d.deals) return 'crm'; if (d.customers && d.invoices && d.seq) return 'sell'; return null; }
+  function detect() { var d = db(); if (!d) return null; if (d.suppliers && d.expenses) return 'expenses'; if (d.employees && d.payRuns && 'nextEmpSeq' in d) return 'payroll'; if (d.projects && d.tasks && d.timeEntries) return 'projects'; if (d.contacts && d.deals) return 'crm'; if (d.customers && d.invoices && d.seq) return 'sell'; return null; }
   function reg(key) { var d = db(); d._bkReg = d._bkReg || {}; d._bkReg[key] = d._bkReg[key] || {}; return d._bkReg[key]; }
 
   /* ---------- views used for change detection ---------- */
@@ -104,6 +104,55 @@
       save: function () { saveCompanyData(); },
       render: function () { renderPage(); }
     },
+    payroll: {
+      key: 'employees',
+      view: function (b) { return { n: low(b.name), p: String(b.position || ''), d: String(b.department || ''), e: low(b.email), ph: String(b.phone || ''), j: String(b.joinDate || ''), s: r2(b.salary) }; },
+      cust: {
+        noExtras: true,
+        list: function () { return db().employees; },
+        nameOf: function (e) { return e.name; },
+        bookIdFor: function (e) { return String(e.empNo || e.id); },
+        match: function (e, b) { return low(e.name) === low(b.name) || (String(e.empNo) === String(b.id) && low(e.name) === low(b.name)); },
+        toBooks: function (e) { return { name: e.name, id: String(e.empNo || e.id), position: e.jobTitle || '', department: e.department || '', email: e.email || '', phone: e.phone || '', joinDate: e.employmentDate || '', salary: Number(e.basicSalary) || 0 }; },
+        make: function (b) {
+          var d = db(), dept = b.department || (d.departments && d.departments[0]) || '', title = b.position || (d.jobTitles && d.jobTitles[0]) || '';
+          if (dept && Array.isArray(d.departments) && d.departments.indexOf(dept) < 0) d.departments.push(dept);
+          if (title && Array.isArray(d.jobTitles) && d.jobTitles.indexOf(title) < 0) d.jobTitles.push(title);
+          return { id: 'emp-bk' + hx(String(b.id) + ':' + String(b.name)).slice(0, 7), empNo: String(b.id), name: b.name, department: dept, jobTitle: title, employmentDate: b.joinDate || today(), basicSalary: Number(b.salary) || 0, phone: b.phone || '', email: b.email || '', bankName: '', bankAccount: '', kraPin: '', nssfNo: '', shifNo: '', status: 'Active', allowances: [], deductions: [], leaveBalance: 21 };
+        },
+        apply: function (e, b) { e.name = b.name; e.department = b.department || e.department; e.jobTitle = b.position || e.jobTitle; e.employmentDate = b.joinDate || e.employmentDate; e.basicSalary = Number(b.salary) || 0; e.phone = b.phone || ''; e.email = b.email || ''; var d = db(); if (e.department && Array.isArray(d.departments) && d.departments.indexOf(e.department) < 0) d.departments.push(e.department); if (e.jobTitle && Array.isArray(d.jobTitles) && d.jobTitles.indexOf(e.jobTitle) < 0) d.jobTitles.push(e.jobTitle); },
+        add: function (e) { db().employees.push(e); },
+        inUse: function (e) { return (db().payRuns || []).some(function (r) { return (r.employeeIds || []).indexOf(e.id) > -1; }); }
+      },
+      save: function () { saveState(); },
+      render: function () { renderAll(); }
+    },
+    projects: {
+      key: 'projects',
+      view: function (b) { return { n: low(b.title), s: String(b.status || ''), p: String(b.priority || ''), sd: String(b.startDate || ''), ed: String(b.endDate || ''), b: r2(b.budget), g: Number(b.progress) || 0, d: String(b.description || '') }; },
+      cust: {
+        noExtras: true,
+        list: function () { return db().projects; },
+        nameOf: function (p) { return p.name; },
+        toBooks: function (p, creating) {
+          var st = p.status === 'Planning' ? 'Not Started' : (p.status || 'Not Started'), pr = p.priority === 'Urgent' ? 'High' : (p.priority || 'Medium');
+          var o = { title: p.name, status: st, priority: pr, startDate: p.startDate || '', endDate: p.endDate || '', budget: String(Number(p.budget) || 0), description: p.description || '', progress: Number(p.progress) || 0 };
+          if (creating) { o.department = ''; o.type = ''; o.dateCreated = new Date().toLocaleString(); }
+          return o;
+        },
+        okIn: function (list, v, d) { return Array.isArray(list) && list.indexOf(v) > -1 ? v : d; },
+        make: function (b) {
+          var d = db(), set = d.settings || {}, code = '';
+          try { code = (set.projectNumberingPrefix || 'PRJ-') + String(set.nextProjectNumber || 1).padStart(3, '0'); set.nextProjectNumber = (set.nextProjectNumber || 1) + 1; } catch (e) {}
+          return { id: 'projects_bk' + hx(String(b.id)).slice(0, 7), name: b.title || 'Untitled', code: code, client: '', manager: '', status: this.okIn(set.projectStatuses, b.status, 'Not Started'), priority: this.okIn(set.priorities, b.priority, 'Medium'), startDate: b.startDate || '', endDate: b.endDate || '', budget: Number(b.budget) || 0, actualCost: 0, labourCost: 0, materialsCost: 0, servicesCost: 0, otherCost: 0, progress: Number(b.progress) || 0, description: b.description || '' };
+        },
+        apply: function (p, b) { var set = db().settings || {}; p.name = b.title || p.name; p.status = this.okIn(set.projectStatuses, b.status, p.status); p.priority = this.okIn(set.priorities, b.priority, p.priority); p.startDate = b.startDate || ''; p.endDate = b.endDate || ''; p.budget = Number(b.budget) || 0; p.progress = Number(b.progress) || 0; p.description = b.description || ''; },
+        add: function (p) { db().projects.push(p); },
+        inUse: function (p) { var d = db(); return ['tasks', 'milestones', 'timeEntries', 'issues', 'documents'].some(function (k) { return (d[k] || []).some(function (x) { return x.projectId === p.id; }); }); }
+      },
+      save: function () { saveState(); },
+      render: function () { render(); }
+    },
     expenses: {
       key: 'suppliers',
       view: function (b) { return { n: low(b.name), e: low(b.primaryEmail), p: String(b.phone || '') }; },
@@ -116,8 +165,40 @@
         add: function (s) { db().suppliers.push(s); },
         inUse: function (s) { return (db().expenses || []).some(function (e) { return e.supplierId === s.id; }); }
       },
+      afterRead: function (rows) {
+        var d = db(), changed = false;
+        var arr = function (k) { try { var v = rows[k] && JSON.parse(rows[k].value); if (typeof v === 'string') v = JSON.parse(v); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
+        var coa = arr('chartOfAccounts'), banks = arr('banks'), nAcc = 0;
+        if (coa) {
+          var byCode = {}, isParent = {}, groups = {}, order = [];
+          coa.forEach(function (a) { if (a && a.code != null) byCode[String(a.code)] = a; });
+          coa.forEach(function (a) { if (a && a.parentCode != null && a.parentCode !== '') isParent[String(a.parentCode)] = 1; });
+          coa.forEach(function (a) {
+            if (!a || !a.name || a.active === false || !/expense|cost of/i.test(String(a.type || ''))) return;
+            if (a.code != null && isParent[String(a.code)]) return;                 /* header accounts only name a group */
+            var par = a.parentName || (a.parentCode != null && byCode[String(a.parentCode)] && byCode[String(a.parentCode)].name) || a.category || 'Expenses';
+            if (low(par) === low(a.name)) par = 'Expenses';
+            if (!groups[par]) { groups[par] = []; order.push(par); }
+            if (groups[par].indexOf(a.name) < 0) { groups[par].push(a.name); nAcc++; }
+          });
+          if (nAcc) {
+            var used = {}; order.forEach(function (g) { groups[g].forEach(function (n) { used[low(n)] = 1; }); });
+            var extra = []; (d.expenses || []).forEach(function (e) { if (e.category && !used[low(e.category)] && extra.indexOf(e.category) < 0) extra.push(e.category); });
+            var cats = {}; order.forEach(function (g) { cats[g] = groups[g]; }); if (extra.length) cats['Other (not in Books chart of accounts)'] = extra;
+            if (h(cats) !== d._bkCat) { d.categories = cats; d._bkCat = h(cats); changed = true; }
+          }
+        }
+        if (banks) {
+          try {
+            var sel = document.getElementById('f_payaccount');
+            if (sel && sel.options) { banks.forEach(function (b) { var n = b && (b.name || b.bankName || b.accountName); if (!n) return; var has = Array.prototype.some.call(sel.options, function (o) { return low(o.value || o.text) === low(n); }); if (!has) { var o = document.createElement('option'); o.value = o.textContent = n; sel.appendChild(o); } }); }
+          } catch (e) {}
+        }
+        ST.extra = coa ? (nAcc ? nAcc + ' expense accounts come from the Books chart of accounts.' : 'Books has no expense accounts yet, so the built-in categories are being used.') : '';
+        return changed;
+      },
       save: function () { saveDB(); },
-      render: function () { try { renderSuppliers(); populateSupplierSelect(); } catch (e) {} }
+      render: function () { try { renderSuppliers(); populateSupplierSelect(); } catch (e) {} try { populateAccountSelect(); } catch (e) {} try { renderCategories(); } catch (e) {} }
     },
     crm: {
       cust: {
@@ -187,7 +268,7 @@
     } catch (e) {}
   }
   function fillPop() {
-    pop.innerHTML = '<div style="font-weight:700;margin-bottom:6px">Books sync</div><div style="margin-bottom:6px">' + String(ST.msg).replace(/</g, '&lt;') + '</div><div style="color:#6b7280;font-size:11px;margin-bottom:8px">Company ID: <b>' + (ST.company || '—') + '</b>' + (ST.at ? ' · last run ' + ST.at.toLocaleTimeString() : '') + (ST.counts ? '<br>' + ST.counts : '') + '</div><button id="acxBridgeNow" style="background:#0f766e;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer">Sync now</button> <button id="acxBridgeX" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">Close</button>';
+    pop.innerHTML = '<div style="font-weight:700;margin-bottom:6px">Books sync</div><div style="margin-bottom:6px">' + String(ST.msg).replace(/</g, '&lt;') + '</div><div style="color:#6b7280;font-size:11px;margin-bottom:8px">Company ID: <b>' + (ST.company || '—') + '</b>' + (ST.at ? ' · last run ' + ST.at.toLocaleTimeString() : '') + (ST.counts ? '<br>' + ST.counts : '') + (ST.extra ? '<br>' + ST.extra : '') + '</div><button id="acxBridgeNow" style="background:#0f766e;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer">Sync now</button> <button id="acxBridgeX" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">Close</button>';
     pop.querySelector('#acxBridgeNow').onclick = function () { ST.msg = 'Syncing…'; fillPop(); sync(true); };
     pop.querySelector('#acxBridgeX').onclick = function () { pop.remove(); pop = null; };
   }
@@ -197,6 +278,22 @@
     document.body.appendChild(pop); fillPop();
   }
   function setSt(state, msg) { ST.state = state; ST.msg = msg; ST.at = new Date(); paint(); }
+
+
+  /* Projects: offer Books customers as suggestions in the project "Client" box (still free text) */
+  var clientNames = [], clientObs = null;
+  function applyClientList() {
+    try {
+      if (APP !== 'projects' || !document.body || !document.querySelectorAll) return;
+      var dl = document.getElementById('acxBooksCustomers');
+      if (!dl) { dl = document.createElement('datalist'); dl.id = 'acxBooksCustomers'; document.body.appendChild(dl); }
+      var want = clientNames.slice(0, 500).map(function (n) { return String(n).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); });
+      var html = want.map(function (n) { return '<option value="' + n + '">'; }).join('');
+      if (dl.getAttribute('data-h') !== h(want)) { dl.innerHTML = html; dl.setAttribute('data-h', h(want)); }
+      Array.prototype.forEach.call(document.querySelectorAll('input[data-key="client"]'), function (i) { if (i.getAttribute('list') !== 'acxBooksCustomers') i.setAttribute('list', 'acxBooksCustomers'); });
+      if (!clientObs && typeof MutationObserver !== 'undefined') { clientObs = new MutationObserver(function () { applyClientList(); }); clientObs.observe(document.body, { childList: true, subtree: true }); }
+    } catch (e) {}
+  }
 
   /* ---------------- one sync pass for one kind ---------------- */
   function bookId(appId, isInv) { return isInv ? numIdOf(APP + ':' + appId) : uuidOf(APP + ':' + appId); }
@@ -258,7 +355,7 @@
       K.list().forEach(function (r) {
         if (mate || r._bk) return;
         if (isInv) { if (K.eligible(r)) { var t = K.toBooks(r, false, {}); if (String(t.invoiceNumber) === String(b.invoiceNumber) && t.date === b.date && low(t.customer) === low(b.customer) && Math.abs(Number(t.totalKES) - Number(b.totalKES != null ? b.totalKES : b.total)) < 0.01) mate = r; } }
-        else if (low(K.nameOf(r)) === low(b.name)) mate = r;
+        else if (K.match ? K.match(r, b) : low(K.nameOf(r)) === low(b.name)) mate = r;
       });
       if (mate) { mate._bk = { id: b.id, bh: h(vw(b)), ah: h(vw(K.toBooks(mate, false, taken))), ph: h(payView(b)) }; if (isInv && K.stock && APP === 'sell') K.stock(mate, false); R[String(b.id)] = { a: mate.id, m: 0, t: 0 }; changed = true; linked[String(b.id)] = mate; return; }
       var n = K.make(b, taken); if (!n) return;
@@ -275,8 +372,9 @@
       if (r._bk) return;
       if (isInv && !K.eligible(r)) return;
       if (!isInv && !String(K.nameOf(r) || '').trim()) return;
-      var o = K.toBooks(r, true, taken); o.id = bookId(r.id, isInv);
-      if (!isInv) { o.createdAt = new Date().toISOString(); o.receivables = 0; } else taken[o.invoiceNumber] = 1;
+      var o = K.toBooks(r, true, taken); o.id = K.bookIdFor ? K.bookIdFor(r) : bookId(r.id, isInv);
+      if (K.bookIdFor && byId[String(o.id)]) o.id = String(o.id) + '-' + hx(String(r.id)).slice(0, 3);   /* same number already used by a different person in Books */
+      if (!isInv && !K.noExtras) { o.createdAt = new Date().toISOString(); o.receivables = 0; } else if (isInv) taken[o.invoiceNumber] = 1;
       pushes.push(o);
       (function (rr, oo) { later.push(function () { rr._bk = { id: oo.id, bh: h(vw(oo)), ah: h(vw(K.toBooks(rr, false, taken))), ph: h(payView(oo)) }; if (isInv && K.stock && APP === 'sell') K.stock(rr, false); R[String(oo.id)] = { a: rr.id, m: 0, t: 0 }; }); })(r, o);
     });
@@ -303,6 +401,27 @@
     return any;
   }
 
+
+  /* Payroll: approved pay runs -> Books "payroll to post" (Books works out its own statutory deductions) */
+  function queueRuns(out) {
+    if (APP !== 'payroll') return false;
+    var d = db(), R = reg('run'), any = false;
+    (d.payRuns || []).forEach(function (run) {
+      if (!run || R[run.id] || ['Approved', 'Posted', 'Paid'].indexOf(run.status) < 0) return;
+      var lines = (run.lines || []).map(function (l) {
+        var e = (d.employees || []).find(function (x) { return x.id === l.employeeId; });
+        return { empId: String((e && e._bk && e._bk.id) || l.empNo || l.employeeId), empNo: l.empNo || '', name: l.name || '', gross: r2(l.gross), net: r2(l.net) };
+      }).filter(function (l) { return l.gross > 0; });
+      if (!lines.length) return;
+      var pd = String(run.payDate || '').slice(0, 7) || today().slice(0, 7);
+      out.inbox.push({ id: 'run-' + run.id, type: 'payroll', status: 'pending', app: 'Payroll', period: run.period || pd, month: pd, payDate: run.payDate || '', lines: lines, gross: r2(lines.reduce(function (a, l) { return a + l.gross; }, 0)), net: r2(lines.reduce(function (a, l) { return a + l.net; }, 0)), createdAt: new Date().toISOString() });
+      out.runs.push(run.id); any = true;
+    });
+    return any;
+  }
+
+  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks'); return k; }
+
   async function sync(force) {
     if (busy) return; var u = user(); APP = detect();
     if (!u || !APP) return;
@@ -310,22 +429,32 @@
     ST.company = u.companyId;
     busy = true;
     try {
-      var rows = {}, res = await w.AcaciaCloud.rpc('acx_books_read', { p_company: u.companyId, p_keys: ['customers', 'invoices', 'suppliers', 'appInbox'] });
+      var rows = {}, res = await w.AcaciaCloud.rpc('acx_books_read', { p_company: u.companyId, p_keys: readKeys() });
       (res || []).forEach(function (r) { rows[r.key] = r; });
-      var nB = { c: 0, i: 0, s: 0 };
-      ['customers', 'invoices', 'suppliers'].forEach(function (k) { try { var a = rows[k] && JSON.parse(rows[k].value); if (typeof a === 'string') a = JSON.parse(a); if (Array.isArray(a)) nB[k[0]] = a.length; } catch (e) {} });
-      ST.counts = 'Books has ' + nB.c + ' customers, ' + nB.i + ' invoices, ' + nB.s + ' suppliers for this company ID.';
+      if (APP === 'projects' && rows.projects) {
+        try { var pj = JSON.parse(rows.projects.value); if (typeof pj === 'string') pj = JSON.parse(pj);
+          if (Array.isArray(pj) && pj.some(function (x) { return x && x.id == null; })) {
+            await w.AcaciaCloud.rpc('acx_books_upsert', { p_company: u.companyId, p_key: 'projects', p_records: [] });
+            rows = {}; ((await w.AcaciaCloud.rpc('acx_books_read', { p_company: u.companyId, p_keys: readKeys() })) || []).forEach(function (r) { rows[r.key] = r; });
+          } } catch (e) { throw e; }
+      }
+      var nB = { c: 0, i: 0, s: 0, e: 0, p: 0 };
+      ['customers', 'invoices', 'suppliers', 'employees', 'projects'].forEach(function (k) { try { var a = rows[k] && JSON.parse(rows[k].value); if (typeof a === 'string') a = JSON.parse(a); if (Array.isArray(a)) nB[k[0]] = a.length; } catch (e) {} });
+      ST.counts = APP === 'projects' ? 'Books has ' + nB.p + ' projects for this company ID.' : APP === 'payroll' ? 'Books has ' + nB.e + ' employees for this company ID.' : 'Books has ' + nB.c + ' customers, ' + nB.i + ' invoices, ' + nB.s + ' suppliers for this company ID.';
+      if (APP === 'projects') { try { var cu = rows.customers && JSON.parse(rows.customers.value); if (typeof cu === 'string') cu = JSON.parse(cu); clientNames = (cu || []).map(function (x) { return x && x.name; }).filter(Boolean).sort(); applyClientList(); } catch (e) {} }
       var inbox = []; try { if (rows.appInbox) { var q = JSON.parse(rows.appInbox.value); if (typeof q === 'string') q = JSON.parse(q); if (Array.isArray(q)) inbox = q; } } catch (e) {}
-      var out = { inbox: [], paid: [], usedNames: {} }, ad = A[APP], c1 = false, c2 = false, c3 = false;
+      var out = { inbox: [], paid: [], runs: [], usedNames: {} }, ad = A[APP], c1 = false, c2 = false, c3 = false;
       try { var iv = rows.invoices && JSON.parse(rows.invoices.value); if (typeof iv === 'string') iv = JSON.parse(iv); (iv || []).forEach(function (x) { if (x && x.customer) out.usedNames[low(x.customer)] = 1; }); } catch (e) {}
       if (ad.cust) c1 = await pass(u.companyId, ad.cust, ad.view || custView, rows, ad.key || 'customers', false, inbox, out);
       if (ad.inv) c2 = await pass(u.companyId, ad.inv, invView, rows, 'invoices', true, inbox, out);
-      c3 = queuePayments(ad, out);
+      c3 = queuePayments(ad, out); c3 = queueRuns(out) || c3;
+      ST.extra = ''; if (ad.afterRead) { try { c3 = ad.afterRead(rows) || c3; } catch (e) { console.warn('[acacia-bridge] accounts', e); } }
       if (out.inbox.length) {
         await w.AcaciaCloud.rpc('acx_books_upsert', { p_company: u.companyId, p_key: 'appInbox', p_records: out.inbox });
         out.paid.forEach(function (id) { reg('pay')[id] = 1; });
+        out.runs.forEach(function (id) { reg('run')[id] = 1; });
       }
-      setSt((nB.c + nB.i + nB.s) === 0 ? 'warn' : 'ok', (nB.c + nB.i + nB.s) === 0 ? 'Connected, but Books has no customers, invoices or suppliers under this company ID. If Books does have data, Books is using a different company ID than this login — run acacia_sync_diagnose.sql in Supabase to compare.' : 'Connected and in sync.');
+      setSt((APP === 'projects' ? nB.p : APP === 'payroll' ? nB.e : nB.c + nB.i + nB.s) === 0 ? 'warn' : 'ok', (APP === 'projects' ? nB.p : APP === 'payroll' ? nB.e : nB.c + nB.i + nB.s) === 0 ? 'Connected, but Books has no customers, invoices or suppliers under this company ID (for Payroll: no employees, for Projects: no projects). If Books does have data, Books is using a different company ID than this login — run acacia_sync_diagnose.sql in Supabase to compare.' : 'Connected and in sync.');
       if (c1 || c2 || c3 || out.inbox.length) { selfSave = true; try { ad.save(); } finally { selfSave = false; } try { var a = document.activeElement; if (!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) ad.render(); } catch (e) {} }
     } catch (e) { console.error('[acacia-bridge]', e); setSt('error', explain(e)); }
     busy = false;
