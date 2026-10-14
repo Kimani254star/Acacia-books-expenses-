@@ -21,6 +21,8 @@
   function numIdOf(s) { return 9000000000000 + (parseInt(hx(s).slice(0, 8), 16) % 900000000); }
   var today = function () { return new Date().toISOString().slice(0, 10); };
 
+  /* Books company ids look like ACC-123 (made in the apps) or company_1790239285132 (made in Books) */
+  var isBooksCo = function (id) { return /^(ACC-\d+|company_[A-Za-z0-9_]+)$/i.test(String(id || '')); };
   var APP = null, busy = false, timer = 0, selfSave = false;
   function db() { try { return DB; } catch (e) { try { return (0, eval)('db'); } catch (e2) { try { return (0, eval)('state'); } catch (e3) { return null; } } } }
   function user() { try { return CURRENT_USER; } catch (e) { return null; } }
@@ -425,7 +427,7 @@
   async function sync(force) {
     if (busy) return; var u = user(); APP = detect();
     if (!u || !APP) return;
-    if (!w.AcaciaCloud || !w.AcaciaCloud.isCloudId(u.companyId)) { ST.company = u.companyId || ''; setSt('warn', 'This login is not a cloud company (ID "' + (u.companyId || 'none') + '"), so it cannot sync with Books. Sign in with the company account that Books uses.'); return; }
+    if (!w.AcaciaCloud || !isBooksCo(u.companyId)) { ST.company = u.companyId || ''; setSt('warn', 'This login has no company ID that Books can match (ID "' + (u.companyId || 'none') + '"). Sign in with the same company account that Books uses.'); return; }
     ST.company = u.companyId;
     busy = true;
     try {
@@ -465,7 +467,7 @@
   if (typeof w.prodName === 'function') { var _pn = w.prodName; w.prodName = function (id) { return String(id).indexOf('BK:') === 0 ? String(id).slice(3) : _pn(id); }; }
 
   var rawSet = Storage.prototype.setItem;
-  Storage.prototype.setItem = function (k) { rawSet.apply(this, arguments); try { if (!selfSave && this === w.localStorage && /_ACC-\d+$/.test(String(k)) && user()) soon(4000); } catch (e) {} };
+  Storage.prototype.setItem = function (k) { rawSet.apply(this, arguments); try { if (!selfSave && this === w.localStorage && /_(ACC-\d+|company_[A-Za-z0-9_]+)$/i.test(String(k)) && user()) soon(4000); } catch (e) {} };
   setInterval(function () { if (!document.hidden) sync(); }, 20000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) soon(800); });
   setTimeout(function wait() { if (user()) sync(); setTimeout(wait, user() ? 60000 : 1500); }, 1500);

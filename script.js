@@ -81,7 +81,7 @@ function hpContact(e){
   var rawSet = Storage.prototype.setItem;
   var low = function (v) { return String(v == null ? '' : v).trim().toLowerCase(); };
   var enc = encodeURIComponent;
-  var isCloudId = function (id) { return /^ACC-\d+$/i.test(String(id || '')); };
+  var isCloudId = function (id) { return /^(ACC-\d+|company_[A-Za-z0-9_]+)$/i.test(String(id || '')); };
   function err(code, msg) { var e = new Error(msg || code); e.code = code; return e; }
 
   async function req(path, opt) {
@@ -117,6 +117,12 @@ function hpContact(e){
   /* deleted / suspended companies are blocked (fails open if the cloud can't be reached) */
   async function gate(cid, login) {
     try { if ((await rpc('acx_account_state', { p_company: low(cid), p_login: low(login) })) === 'deleted') return 'This account was removed by Acacia support.'; } catch (e) {}
+    try {
+      var acc = await rpc('acx_app_access', { p_company: String(cid || ''), p_login: low(login), p_app: String((cfg && cfg.app) || '').toLowerCase() });
+      if (acc === 'not_paid') return 'Your company has not paid for this app yet. Ask your admin to add it to your plan in Acacia Books (Settings > Subscription), then sign in again.';
+      if (acc === 'expired') return 'Your company subscription has ended. Renew it in Acacia Books to open this app again.';
+      if (acc === 'no_access') return 'Your admin has not given you access to this app. Ask them to tick it under User Management > App access in Acacia Books.';
+    } catch (e) {}
     try {
       var r = await req('acacia_company_status?select=status&company_id=eq.' + enc(cid));
       if (r.ok) { var j = await r.json(); var s = j[0] && j[0].status; if (s === 'pending') return 'Your company is waiting for approval by Acacia support. You will be able to sign in as soon as it is approved.'; if (s && s !== 'active') return 'Your company account is "' + s + '". Please contact Acacia support.'; }
