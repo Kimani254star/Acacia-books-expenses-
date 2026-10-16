@@ -44,7 +44,7 @@
     '#acxsbBar button{width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;border:0;background:transparent;border-radius:8px;font-size:16px;line-height:1;cursor:pointer;transition:background .15s;padding:0}' +
     '#acxsbBar button:hover,#acxsbBar button.on{background:#f1f5f9}' +
     '#acxsbBar .sep{width:24px;height:1px;background:#e2e8f0;margin:4px 0;flex:none}' +
-    'body.acxsb-on .acxsb-pad{margin-right:48px!important}' +
+    'body.acxsb-on .acxsb-pad{margin-right:48px!important}#rightSidebar{display:none!important}' +
     'body.acxsb-on #acxhFab{right:64px!important}body.acxsb-on #acxhPop{right:64px!important}body.acxsb-on #acxsRoot{right:64px!important}' +
     '#acxsbPanel{position:fixed;top:5rem;right:4rem;width:20rem;max-width:calc(100vw - 80px);max-height:calc(100vh - 7rem);z-index:8991;display:none;flex-direction:column;overflow:hidden;background:#fff;color:#0f172a;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);font-size:12px;line-height:1.4;font-family:inherit}' +
     '#acxsbPanel.open{display:flex}#acxsbPanel *{box-sizing:border-box;font-family:inherit}#acxsbPanel button,#acxsbPanel input,#acxsbPanel select{font-family:inherit}' +
@@ -72,6 +72,7 @@
     '.sb-b{max-width:84%;padding:6px 10px;border-radius:12px;background:#f1f5f9;white-space:pre-wrap;word-wrap:break-word}.sb-msg.me .sb-b{background:#1d4ed8;color:#fff}' +
     '.sb-b small{display:block;font-size:10px;opacity:.65;margin-top:2px}' +
     '.sb-kv{margin:0 0 4px}.sb-kv b{color:#334155}' +
+    '.sb-a{color:#1d4ed8}' +
     '#acxsbBadge{display:none;position:absolute;top:-4px;right:-6px;background:#dc2626;color:#fff;border-radius:999px;font-weight:700;font-size:9px;line-height:1;padding:2px 4px}' +
     '@media (max-width:700px){#acxsbPanel{right:8px;left:8px;width:auto;max-width:none}}';
 
@@ -107,10 +108,12 @@
   }
   var padded = [];
   function appTopbar() {
-    var el = document.querySelector('#topbar, .topbar');
-    if (!el) return null;
-    var r = el.getBoundingClientRect();
-    return (r.height > 0 && r.width > 0) ? el : null;
+    var list = document.querySelectorAll('#topbar, .topbar, header');
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i].getBoundingClientRect();
+      if (r.height > 0 && r.width > 0 && r.top <= 2 && r.height < 140) return list[i];
+    }
+    return null;
   }
   function unpad() { padded.forEach(function (n) { n.classList.remove('acxsb-pad'); }); padded = []; }
   function tick() {
@@ -194,14 +197,14 @@
       if (dev && dev.length) {
         h += '<div class="sb-meta" style="margin-bottom:6px"><b>From the Acacia team</b></div>' + dev.map(function (w) {
           var done = w.status === 'completed' || Date.now() > new Date(w.starts_at).getTime() + (w.duration_min || 60) * 60000;
-          var act = done ? (safeUrl(w.recording_url) ? '<a href="' + esc(w.recording_url) + '" target="_blank" rel="noopener" style="color:#1d4ed8">▶ Watch recording</a>' : '<span class="sb-meta">Session ended</span>')
-            : (safeUrl(w.join_url) ? '<a href="' + esc(w.join_url) + '" target="_blank" rel="noopener" style="color:#1d4ed8">Join webinar</a>' : '<span class="sb-meta">Join link coming soon</span>');
+          var act = done ? (safeUrl(w.recording_url) ? '<a href="' + esc(w.recording_url) + '" target="_blank" rel="noopener" class="sb-a">▶ Watch recording</a>' : '<span class="sb-meta">Session ended</span>')
+            : (safeUrl(w.join_url) ? '<a href="' + esc(w.join_url) + '" target="_blank" rel="noopener" class="sb-a">Join webinar</a>' : '<span class="sb-meta">Join link coming soon</span>');
           return '<div class="sb-card"><b>' + esc(w.title) + '</b><div class="sb-meta">' + esc(new Date(w.starts_at).toLocaleString()) + (w.host ? ' · ' + esc(w.host) : '') + '</div>' + act + '</div>';
         }).join('');
       }
       h += '<div class="sb-meta" style="margin:' + (h ? '10px' : '0') + ' 0 6px"><b>My sessions</b></div>' + (mine.length ? mine.map(function (w, i) {
         return '<div class="sb-card"><button class="sb-x" data-wd="' + i + '" type="button">✕</button><b>' + esc(w.title) + '</b><div class="sb-meta">' + esc(new Date(w.date).toLocaleString()) + '</div>' +
-          (safeUrl(w.link) ? '<a href="' + esc(w.link) + '" target="_blank" rel="noopener" style="color:#1d4ed8">Join webinar</a>' : '') + '</div>';
+          (safeUrl(w.link) ? '<a href="' + esc(w.link) + '" target="_blank" rel="noopener" class="sb-a">Join webinar</a>' : '') + '</div>';
       }).join('') : '<div class="sb-empty">No sessions scheduled.</div>');
       var box = $('acxsbWl2'); if (!box) return; box.innerHTML = h;
       [].forEach.call(box.querySelectorAll('[data-wd]'), function (b) {

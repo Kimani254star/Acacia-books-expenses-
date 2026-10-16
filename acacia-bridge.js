@@ -95,13 +95,45 @@
         pay: function (i, b, inbox, bookId) { var tot = Number(i.total) || 0, p = Math.min(tot, (Number(b.amountPaid) || (low(b.status) === 'paid' ? tot : 0)) + pendingPaid(inbox, bookId)); i.paid = p; i.status = tot > 0 && p >= tot ? 'Paid' : (p > 0 ? 'Partially Paid' : 'Sent'); },
         apply: function (i, b) { var n = this.make(b); if (!n) return; Object.keys(n).forEach(function (k) { if (k !== 'id' && k !== 'paid' && k !== 'status') i[k] = n[k]; }); },
         add: function (i) { db().invoices.unshift(i); },
-        stockMap: function (i) { var m = {}; (i.lines || []).forEach(function (l) { if (db().products.some(function (p) { return p.id === l.pid; })) m[l.pid] = (m[l.pid] || 0) + (Number(l.qty) || 0); }); return m; },
+        stockMap: function (i) { var m = {}; (i.lines || []).forEach(function (l) { if (db().products.some(function (p) { return p.id === l.pid && !p.bk; })) m[l.pid] = (m[l.pid] || 0) + (Number(l.qty) || 0); }); return m; },
         stock: function (i, adjust) {
           var now = this.stockMap(i), old = (i._bk && i._bk.sk) || {}, ids = {}; Object.keys(now).concat(Object.keys(old)).forEach(function (k) { ids[k] = 1; });
           if (adjust) Object.keys(ids).forEach(function (k) { var d = (now[k] || 0) - (old[k] || 0), p = db().products.find(function (x) { return x.id === k; }); if (p && d) p.stock = Math.max(0, (Number(p.stock) || 0) - d); });
           if (i._bk) i._bk.sk = now;
         },
         inUse: function () { return false; }
+      },
+      afterRead: function (rows) {
+        var d = db(), changed = false;
+        var arr = function (k) { try { var v = rows[k] && JSON.parse(rows[k].value); if (typeof v === 'string') v = JSON.parse(v); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
+        var inv = arr('inventory'), banks = arr('banks'), coa = arr('chartOfAccounts');
+        var names = []; (banks || []).forEach(function (b) { var n = b && (b.name || b.bankName || b.accountName); if (n && names.indexOf(String(n)) < 0) names.push(String(n)); });
+        w.AcaciaBooksData = { banks: names, accounts: coa || [] };
+        if (inv) {
+          var agg = {}, order = [];
+          inv.forEach(function (x) {
+            if (!x || !x.name) return;
+            var sku = String(x.sku || x.code || x.itemCode || ''), key = low(sku || x.name), a = agg[key];
+            if (!a) { a = agg[key] = { name: String(x.name), sku: sku, qty: 0, price: 0, vat: 16, unit: String(x.unit || x.uom || 'piece'), reorder: 0 }; order.push(key); }
+            a.qty += parseFloat(x.qty) || 0;
+            var pr = Number(x.sellingPrice || x.sellPrice || x.price || 0) || 0; if (pr && !a.price) a.price = pr;
+            var vr = x.sellVAT != null ? x.sellVAT : (x.vat != null ? x.vat : (x.vatRate != null ? x.vatRate : x.taxRate));
+            if (vr != null && vr !== '') { var vs = String(vr); if (/exempt|zero/i.test(vs)) a.vat = 0; else { var m = vs.match(/\d+(\.\d+)?/); if (m) a.vat = Number(m[0]); } }
+            var rl = Number(x.reorderLevel || x.reorder || 0) || 0; if (rl && !a.reorder) a.reorder = rl;
+          });
+          order.forEach(function (key) {
+            var a = agg[key], p = d.products.find(function (x) { return x.bk === key; });
+            if (!p) {
+              if (d.products.some(function (x) { return !x.bk && ((a.sku && x.sku && low(x.sku) === low(a.sku)) || low(x.name) === low(a.name)); })) return;   /* already a Sell product - leave it alone */
+              d.products.unshift({ id: 'P-bk' + hx(key).slice(0, 8), name: a.name, sku: a.sku || ('BK-' + hx(key).slice(0, 6)), price: a.price, vat: a.vat, stock: a.qty, reorder: a.reorder, unit: a.unit, bk: key }); changed = true; return;
+            }
+            var before = JSON.stringify([p.name, p.sku, p.price, p.vat, p.stock, p.unit, p.reorder]);
+            p.name = a.name; p.sku = a.sku || p.sku; p.price = a.price; p.vat = a.vat; p.stock = a.qty; p.unit = a.unit; p.reorder = a.reorder;
+            if (JSON.stringify([p.name, p.sku, p.price, p.vat, p.stock, p.unit, p.reorder]) !== before) changed = true;
+          });
+          ST.extra = order.length + ' items from the Books inventory are available as products (price and stock come from Books).';
+        }
+        return changed;
       },
       save: function () { saveCompanyData(); },
       render: function () { renderPage(); }
@@ -428,7 +460,7 @@
     return any;
   }
 
-  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks'); if (APP === 'projects') k.push('plans', 'budgets'); return k; }
+  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
 
   async function sync(force) {
     if (busy) return; var u = user(); APP = detect();
