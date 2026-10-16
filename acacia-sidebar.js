@@ -1,4 +1,4 @@
-/* acacia-sidebar.js - right-hand tools bar, styled exactly like the Acacia Inventory right sidebar.
+/* acacia-sidebar.js - right-hand tools bar, styled like the Acacia Books right sidebar (black, emoji + word labels).
    Buttons (same order as Inventory): Notebook, Webinars, Team Status (chat), Support, Organization Details | Docs, Sheets, Photos, Calendar.
    Self-contained (own CSS + markup). Notes / saved webinars use the same localStorage keys as Books (acaciaNotes, acaciaWebinars).
    Team chat uses the acx_team_* functions (sql/acacia_team.sql); Organization Details reads the Books profile via acx_books_read. */
@@ -40,13 +40,13 @@
 
   /* ---------- look (mirrors the Inventory sidebar + panels) ---------- */
   var css =
-    '#acxsbBar{position:fixed;right:0;top:0;bottom:0;width:48px;z-index:8990;display:none;flex-direction:column;align-items:center;gap:16px;padding:8px;overflow-y:auto;background:#fff;border-left:1px solid #e2e8f0;box-sizing:border-box}' +
-    '#acxsbBar button{width:32px;height:32px;flex:none;display:flex;align-items:center;justify-content:center;border:0;background:transparent;border-radius:8px;font-size:16px;line-height:1;cursor:pointer;transition:background .15s;padding:0}' +
-    '#acxsbBar button:hover,#acxsbBar button.on{background:#f1f5f9}' +
-    '#acxsbBar .sep{width:24px;height:1px;background:#e2e8f0;margin:4px 0;flex:none}' +
-    'body.acxsb-on .acxsb-pad{margin-right:48px!important}#rightSidebar{display:none!important}' +
-    'body.acxsb-on #acxhFab{right:64px!important}body.acxsb-on #acxhPop{right:64px!important}body.acxsb-on #acxsRoot{right:64px!important}' +
-    '#acxsbPanel{position:fixed;top:5rem;right:4rem;width:20rem;max-width:calc(100vw - 80px);max-height:calc(100vh - 7rem);z-index:8991;display:none;flex-direction:column;overflow:hidden;background:#fff;color:#0f172a;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);font-size:12px;line-height:1.4;font-family:inherit}' +
+    '#acxsbBar{position:fixed;right:0;top:0;bottom:0;width:10rem;z-index:8990;display:none;flex-direction:column;align-items:stretch;gap:8px;padding:4px;overflow-y:auto;overflow-x:hidden;background:#000;color:#fff;box-sizing:border-box}' +
+    '#acxsbBar button{width:100%;min-height:28px;flex:none;display:flex;align-items:center;justify-content:flex-start;gap:6px;text-align:left;border:0;background:transparent;color:#fff;border-radius:4px;font-size:14px;line-height:1.25;cursor:pointer;transition:all .3s;padding:4px;font-family:inherit}' +
+    '#acxsbBar button:hover,#acxsbBar button.on{background:#facc15;color:#000;box-shadow:0 10px 15px -3px rgba(0,0,0,.2)}' +
+    '#acxsbBar .sep{width:100%;height:1px;background:rgba(255,255,255,.25);margin:2px 0;flex:none}' +
+    'body.acxsb-on .acxsb-pad{margin-right:10rem!important}#rightSidebar{display:none!important}' +
+    'body.acxsb-on #acxhFab{right:11rem!important}body.acxsb-on #acxhPop{right:11rem!important}body.acxsb-on #acxsRoot{right:11rem!important}' +
+    '#acxsbPanel{position:fixed;top:5rem;right:11rem;width:20rem;max-width:calc(100vw - 12rem);max-height:calc(100vh - 7rem);z-index:8991;display:none;flex-direction:column;overflow:hidden;background:#fff;color:#0f172a;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);font-size:12px;line-height:1.4;font-family:inherit}' +
     '#acxsbPanel.open{display:flex}#acxsbPanel *{box-sizing:border-box;font-family:inherit}#acxsbPanel button,#acxsbPanel input,#acxsbPanel select{font-family:inherit}' +
     '#acxsbHead{padding:12px;color:#fff;font-weight:700;display:flex;justify-content:space-between;align-items:center;flex:none}' +
     '#acxsbHead button{background:none;border:0;color:#fff;font-weight:700;font-size:14px;cursor:pointer;opacity:.9}#acxsbHead button:hover{opacity:1}' +
@@ -73,8 +73,8 @@
     '.sb-b small{display:block;font-size:10px;opacity:.65;margin-top:2px}' +
     '.sb-kv{margin:0 0 4px}.sb-kv b{color:#334155}' +
     '.sb-a{color:#1d4ed8}' +
-    '#acxsbBadge{display:none;position:absolute;top:-4px;right:-6px;background:#dc2626;color:#fff;border-radius:999px;font-weight:700;font-size:9px;line-height:1;padding:2px 4px}' +
-    '@media (max-width:700px){#acxsbPanel{right:8px;left:8px;width:auto;max-width:none}}';
+    '#acxsbBadge{display:none;position:absolute;top:50%;right:6px;transform:translateY(-50%);background:#dc2626;color:#fff;border-radius:999px;font-weight:700;font-size:9px;line-height:1;padding:2px 4px}' +
+    '@media (max-width:700px){#acxsbBar{width:48px}#acxsbBar button{justify-content:center}#acxsbBar .acxsb-l{display:none}body.acxsb-on .acxsb-pad{margin-right:48px!important}body.acxsb-on #acxhFab,body.acxsb-on #acxhPop,body.acxsb-on #acxsRoot{right:64px!important}#acxsbBadge{top:-2px;right:2px;transform:none}#acxsbPanel{right:8px;left:8px;width:auto;max-width:none}}';
 
   var TOOLS = [
     ['notes', '📔', 'Acacia Notebook'], ['webinar', '🎥', 'Webinars'], ['team', '💬', 'Team Status'], ['support', '🎧', 'Support Hub'], ['org', '🏢', 'Organization Details'],
@@ -90,7 +90,7 @@
     bar.innerHTML = TOOLS.map(function (t) {
       if (t[0] === '-') return '<div class="sep"></div>';
       var badge = t[0] === 'team' ? '<i id="acxsbBadge" style="font-style:normal"></i>' : '';
-      return '<button type="button" data-t="' + t[0] + '" title="' + t[2] + '" style="position:relative">' + t[1] + badge + '</button>';
+      return '<button type="button" data-t="' + t[0] + '" title="' + t[2] + '" style="position:relative"><span>' + t[1] + '</span><span class="acxsb-l">' + t[2] + '</span>' + badge + '</button>';
     }).join('');
     panel = document.createElement('div'); panel.id = 'acxsbPanel';
     panel.innerHTML = '<div id="acxsbHead"><span id="acxsbTitle"></span><button type="button" data-c="1">✕</button></div><div id="acxsbBody"></div>';
