@@ -44,7 +44,7 @@
     '#acxsbBar button{width:100%;min-height:28px;flex:none;display:flex;align-items:center;justify-content:flex-start;gap:6px;text-align:left;border:0;background:transparent;color:#fff;border-radius:4px;font-size:14px;line-height:1.25;cursor:pointer;transition:all .3s;padding:4px;font-family:inherit}' +
     '#acxsbBar button:hover,#acxsbBar button.on{background:#facc15;color:#000;box-shadow:0 10px 15px -3px rgba(0,0,0,.2)}' +
     '#acxsbBar .sep{width:100%;height:1px;background:rgba(255,255,255,.25);margin:2px 0;flex:none}' +
-    'body.acxsb-on .acxsb-pad{margin-right:10rem!important}#rightSidebar{display:none!important}' +
+    'body.acxsb-on .acxsb-pad{margin-right:10rem!important;margin-left:0!important;width:auto!important;max-width:none!important;min-width:0!important;box-sizing:border-box}#rightSidebar{display:none!important}' +
     'body.acxsb-on #acxhFab{right:11rem!important}body.acxsb-on #acxhPop{right:11rem!important}body.acxsb-on #acxsRoot{right:11rem!important}' +
     '#acxsbPanel{position:fixed;top:5rem;right:11rem;width:20rem;max-width:calc(100vw - 12rem);max-height:calc(100vh - 7rem);z-index:8991;display:none;flex-direction:column;overflow:hidden;background:#fff;color:#0f172a;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);font-size:12px;line-height:1.4;font-family:inherit}' +
     '#acxsbPanel.open{display:flex}#acxsbPanel *{box-sizing:border-box;font-family:inherit}#acxsbPanel button,#acxsbPanel input,#acxsbPanel select{font-family:inherit}' +
@@ -74,7 +74,7 @@
     '.sb-kv{margin:0 0 4px}.sb-kv b{color:#334155}' +
     '.sb-a{color:#1d4ed8}' +
     '#acxsbBadge{display:none;position:absolute;top:50%;right:6px;transform:translateY(-50%);background:#dc2626;color:#fff;border-radius:999px;font-weight:700;font-size:9px;line-height:1;padding:2px 4px}' +
-    '@media (max-width:700px){#acxsbBar{width:48px}#acxsbBar button{justify-content:center}#acxsbBar .acxsb-l{display:none}body.acxsb-on .acxsb-pad{margin-right:48px!important}body.acxsb-on #acxhFab,body.acxsb-on #acxhPop,body.acxsb-on #acxsRoot{right:64px!important}#acxsbBadge{top:-2px;right:2px;transform:none}#acxsbPanel{right:8px;left:8px;width:auto;max-width:none}}';
+    '@media (max-width:700px){#acxsbBar{width:48px}#acxsbBar button{justify-content:center}#acxsbBar .acxsb-l{display:none}body.acxsb-on .acxsb-pad{margin-right:48px!important;margin-left:0!important;width:auto!important;max-width:none!important}body.acxsb-on #acxhFab,body.acxsb-on #acxhPop,body.acxsb-on #acxsRoot{right:64px!important}#acxsbBadge{top:-2px;right:2px;transform:none}#acxsbPanel{right:8px;left:8px;width:auto;max-width:none}}';
 
   var TOOLS = [
     ['notes', '📔', 'Acacia Notebook'], ['webinar', '🎥', 'Webinars'], ['team', '💬', 'Team Status'], ['support', '🎧', 'Support Hub'], ['org', '🏢', 'Organization Details'],

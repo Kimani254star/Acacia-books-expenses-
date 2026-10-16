@@ -5,6 +5,8 @@
  *   window.ACACIA_APPEARANCE = { sidebar: '.sidebar', items: '.sidebar .nav-item' };
  * and puts <div data-acacia-appearance></div> wherever the Appearance card should show.
  * Settings are saved in localStorage ("acacia_appearance") and applied on every page load.
+ * The right-hand tools bar (#acxsbBar from acacia-sidebar.js, or Plans' own #rightSidebar) follows the same
+ * sidebar colour / text colour / font / font size. Override with window.ACACIA_APPEARANCE.rightbar / rightitems.
  * Anything left unset keeps the site's original look.
  */
 (function () {
@@ -12,19 +14,41 @@
   var KEY = "acacia_appearance";
   var SB = CFG.sidebar || ".sidebar";
   var IT = CFG.items || (SB + " button, " + SB + " a, " + SB + " .nav-item");
+  var RB = CFG.rightbar || "#acxsbBar, #rightSidebar";
+  var RBI = CFG.rightitems || "#acxsbBar button, #rightSidebar button, #rightSidebar a";
+  function sel(list, suffix) { return list.split(",").map(function (x) { return x.trim() + (suffix || ""); }).join(","); }
   var PRESETS = [
     ["#0A1615", "#E7ECEB"], ["#0E2B29", "#E7ECEB"], ["#22615D", "#F1F7F6"], ["#1e3a8a", "#E8EEFF"],
     ["#4c1d95", "#F1E9FF"], ["#7f1d1d", "#FFEDED"], ["#374151", "#F3F4F6"], ["#ffffff", "#0e2b29"]
   ];
   var FONTS = [
     ["Default", [["", "Site default"]]],
-    ["Sans-serif (web fonts)", [["'Inter', sans-serif", "Inter"], ["'Roboto', sans-serif", "Roboto"], ["'Open Sans', sans-serif", "Open Sans"], ["'Lato', sans-serif", "Lato"], ["'Poppins', sans-serif", "Poppins"], ["'Montserrat', sans-serif", "Montserrat"], ["'Nunito', sans-serif", "Nunito"], ["'Source Sans 3', sans-serif", "Source Sans 3"], ["'DM Sans', sans-serif", "DM Sans"], ["'Work Sans', sans-serif", "Work Sans"]]],
-    ["Serif (web fonts)", [["'Merriweather', serif", "Merriweather"], ["'Playfair Display', serif", "Playfair Display"], ["'Lora', serif", "Lora"], ["'PT Serif', serif", "PT Serif"], ["'Crimson Text', serif", "Crimson Text"]]],
-    ["Monospace (web fonts)", [["'JetBrains Mono', monospace", "JetBrains Mono"], ["'Fira Code', monospace", "Fira Code"], ["'Source Code Pro', monospace", "Source Code Pro"]]],
-    ["System fonts", [["Georgia, serif", "Georgia"], ["'Times New Roman', Times, serif", "Times New Roman"], ["'Palatino Linotype', Palatino, serif", "Palatino"], ["Garamond, serif", "Garamond"], ["Cambria, Georgia, serif", "Cambria"], ["Arial, Helvetica, sans-serif", "Arial"], ["Verdana, Geneva, sans-serif", "Verdana"], ["Tahoma, Geneva, sans-serif", "Tahoma"], ["'Trebuchet MS', sans-serif", "Trebuchet MS"], ["'Segoe UI', Roboto, sans-serif", "Segoe UI"], ["Calibri, Candara, sans-serif", "Calibri"], ["system-ui, -apple-system, sans-serif", "System default"], ["'Courier New', monospace", "Courier New"]]]
+    ["Sans-serif (web fonts)", [
+      ["'Inter', system-ui, sans-serif", "Inter"], ["'Roboto', system-ui, sans-serif", "Roboto"], ["'Open Sans', system-ui, sans-serif", "Open Sans"],
+      ["'Lato', system-ui, sans-serif", "Lato"], ["'Poppins', system-ui, sans-serif", "Poppins"], ["'Montserrat', system-ui, sans-serif", "Montserrat"],
+      ["'Nunito', system-ui, sans-serif", "Nunito"], ["'Source Sans 3', system-ui, sans-serif", "Source Sans Pro"], ["'Raleway', system-ui, sans-serif", "Raleway"],
+      ["'Work Sans', system-ui, sans-serif", "Work Sans"], ["'Rubik', system-ui, sans-serif", "Rubik"], ["'Mulish', system-ui, sans-serif", "Mulish"],
+      ["'Quicksand', system-ui, sans-serif", "Quicksand"], ["'Karla', system-ui, sans-serif", "Karla"], ["'DM Sans', system-ui, sans-serif", "DM Sans"],
+      ["'Manrope', system-ui, sans-serif", "Manrope"], ["'Josefin Sans', system-ui, sans-serif", "Josefin Sans"], ["'Oswald', system-ui, sans-serif", "Oswald"],
+      ["'PT Sans', system-ui, sans-serif", "PT Sans"], ["'Ubuntu', system-ui, sans-serif", "Ubuntu"], ["'Fira Sans', system-ui, sans-serif", "Fira Sans"],
+      ["'Noto Sans', system-ui, sans-serif", "Noto Sans"], ["'Space Grotesk', system-ui, sans-serif", "Space Grotesk"], ["'Barlow', system-ui, sans-serif", "Barlow"],
+      ["'Cabin', system-ui, sans-serif", "Cabin"]]],
+    ["Serif (web fonts)", [
+      ["'Merriweather', Georgia, serif", "Merriweather"], ["'Playfair Display', Georgia, serif", "Playfair Display"], ["'Crimson Text', Georgia, serif", "Crimson Text"],
+      ["'Lora', Georgia, serif", "Lora"], ["'EB Garamond', Georgia, serif", "EB Garamond"], ["'Libre Baskerville', Georgia, serif", "Libre Baskerville"],
+      ["'PT Serif', Georgia, serif", "PT Serif"]]],
+    ["Monospace (web fonts)", [
+      ["'Roboto Mono', ui-monospace, 'Courier New', monospace", "Roboto Mono"], ["'JetBrains Mono', monospace", "JetBrains Mono"],
+      ["'Fira Code', monospace", "Fira Code"], ["'Source Code Pro', monospace", "Source Code Pro"]]],
+    ["System fonts", [
+      ["Cambria, 'Hoefler Text', 'Liberation Serif', Georgia, serif", "Cambria"], ["Georgia, 'Times New Roman', serif", "Georgia"], ["'Times New Roman', Times, serif", "Times New Roman"],
+      ["'Palatino Linotype', Palatino, serif", "Palatino"], ["Garamond, serif", "Garamond"], ["Arial, Helvetica, sans-serif", "Arial"],
+      ["Verdana, Geneva, sans-serif", "Verdana"], ["Tahoma, Geneva, sans-serif", "Tahoma"], ["'Trebuchet MS', sans-serif", "Trebuchet MS"],
+      ["'Segoe UI', Roboto, sans-serif", "Segoe UI"], ["Calibri, Candara, sans-serif", "Calibri"], ["system-ui, -apple-system, sans-serif", "System default"],
+      ["'Courier New', ui-monospace, monospace", "Courier New"]]]
   ];
-  var SIZES = [["", "Site default"], ["0.8rem", "Small"], ["1rem", "Large"], ["1.125rem", "Extra large"]];
-  var WEBFONT_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Lato:wght@400;700&family=Poppins:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Nunito:wght@400;600;700&family=Source+Sans+3:wght@400;600&family=DM+Sans:wght@400;500;700&family=Work+Sans:wght@400;500;600&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;600&family=Lora:wght@400;600&family=PT+Serif:wght@400;700&family=Crimson+Text:wght@400;600&family=JetBrains+Mono:wght@400;600&family=Fira+Code:wght@400;500&family=Source+Code+Pro:wght@400;600&display=swap";
+  var SIZES = [["", "Site default"], ["0.7rem", "Extra small"], ["0.8rem", "Small"], ["1rem", "Large"], ["1.125rem", "Extra large"], ["1.25rem", "Huge"]];
+  var WEBFONT_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Lato:wght@400;700&family=Poppins:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Nunito:wght@400;600;700&family=Source+Sans+3:wght@400;600&family=Raleway:wght@400;500;600&family=Work+Sans:wght@400;500;600&family=Rubik:wght@400;500;600&family=Mulish:wght@400;600;700&family=Quicksand:wght@400;500;600&family=Karla:wght@400;500;700&family=DM+Sans:wght@400;500;700&family=Manrope:wght@400;500;700&family=Josefin+Sans:wght@400;600&family=Oswald:wght@400;500&family=PT+Sans:wght@400;700&family=Ubuntu:wght@400;500;700&family=Fira+Sans:wght@400;500;600&family=Noto+Sans:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&family=Barlow:wght@400;500;600&family=Cabin:wght@400;500;600&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;600&family=Crimson+Text:wght@400;600&family=Lora:wght@400;600&family=EB+Garamond:wght@400;500;600&family=Libre+Baskerville:wght@400;700&family=PT+Serif:wght@400;700&family=Roboto+Mono:wght@400;500&family=JetBrains+Mono:wght@400;600&family=Fira+Code:wght@400;500&family=Source+Code+Pro:wght@400;600&display=swap";
 
   function get() { try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { return {}; } }
   function save(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) {} }
@@ -45,10 +69,13 @@
       var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(bg);
       if (m) { var L = (0.299 * parseInt(m[1], 16) + 0.587 * parseInt(m[2], 16) + 0.114 * parseInt(m[3], 16)) / 255; tx = L > 0.6 ? "#0e2b29" : "#f3f6f5"; }
     }
-    if (bg) out.push(SB + "{background:" + bg + " !important;}");
+    if (bg) out.push(SB + "," + RB + "{background:" + bg + " !important;}");
     if (tx) {
       out.push(SB + "," + SB + " *:not(svg):not(svg *){color:" + tx + " !important;}");
+      out.push(RB.split(",").map(function (x) { x = x.trim(); return x + "," + x + " *:not(svg):not(svg *):not(#acxsbBadge)"; }).join(",") + "{color:" + tx + " !important;}");
       out.push(SB + " .disabled{opacity:.5;}");
+      out.push(sel(RBI) + "{background:transparent !important;}");
+      out.push(sel(RBI, ":hover") + "," + sel(RBI, ".on") + "{background:color-mix(in srgb," + tx + " 18%,transparent) !important;}");
       out.push(IT + "{background:transparent !important;}");
       out.push(IT.split(",").map(function (s) { return s.trim() + ":hover"; }).join(",") + "{background:color-mix(in srgb," + tx + " 14%,transparent) !important;}");
       out.push(IT.split(",").map(function (s) { s = s.trim(); return s + ".active," + s + ".sb-active"; }).join(",") + "{background:color-mix(in srgb," + tx + " 24%,transparent) !important;}");
@@ -57,7 +84,7 @@
     }
     if (a.font) out.push("body,body *:not(i):not(.fa):not(svg):not(svg *){font-family:" + a.font + " !important;}");
     if (a.fs) {
-      out.push("body p,body td,body th,body li,body label,body input,body select,body textarea,body button,body a,body small," + SB + " *:not(svg):not(svg *){font-size:" + a.fs + " !important;}");
+      out.push("body p,body td,body th,body li,body label,body input,body select,body textarea,body button,body a,body small," + SB + " *:not(svg):not(svg *)," + RB.split(",").map(function (x) { return x.trim() + " *:not(svg):not(svg *)"; }).join(",") + "{font-size:" + a.fs + " !important;}");
     }
     return out.join("\n");
   }
