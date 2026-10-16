@@ -248,7 +248,7 @@
 
 
   /* ---------- visible status (so a failure is never silent) ---------- */
-  var ST = { state: 'wait', msg: 'Waiting for login…', at: null, company: '', counts: '' }, pill = null, pop = null;
+  var ST = { state: 'wait', msg: 'Waiting for login…', at: null, company: '', counts: '', err: '' }, pill = null, pop = null;
   function explain(e) {
     var m = String((e && e.message) || e || ''), c = e && e.code, st = e && e.status;
     if (c === 'missing' || st === 404 || /could not find the function|schema cache/i.test(m)) return 'Supabase does not have the sync functions yet. Run acacia_cross_app_sync.sql (latest version) in Supabase > SQL Editor, then press Sync now.';
@@ -270,10 +270,16 @@
     } catch (e) {}
   }
   function fillPop() {
-    pop.innerHTML = '<div style="font-weight:700;margin-bottom:6px">Books sync</div><div style="margin-bottom:6px">' + String(ST.msg).replace(/</g, '&lt;') + '</div><div style="color:#6b7280;font-size:11px;margin-bottom:8px">Company ID: <b>' + (ST.company || '—') + '</b>' + (ST.at ? ' · last run ' + ST.at.toLocaleTimeString() : '') + (ST.counts ? '<br>' + ST.counts : '') + (ST.extra ? '<br>' + ST.extra : '') + '</div><button id="acxBridgeNow" style="background:#0f766e;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer">Sync now</button> <button id="acxBridgeX" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">Close</button>';
+    pop.innerHTML = '<div style="font-weight:700;margin-bottom:6px">Books sync</div><div style="margin-bottom:6px">' + String(ST.msg).replace(/</g, '&lt;') + '</div><div style="color:#6b7280;font-size:11px;margin-bottom:8px">Company ID: <b>' + (ST.company || '—') + '</b>' + (ST.at ? ' · last run ' + ST.at.toLocaleTimeString() : '') + (ST.counts ? '<br>' + ST.counts : '') + (ST.extra ? '<br>' + ST.extra : '') + '</div><button id="acxBridgeNow" style="background:#0f766e;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer">Sync now</button> <button id="acxBridgeCopy" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">Copy details</button> <button id="acxBridgeX" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">Close</button>';
     pop.querySelector('#acxBridgeNow').onclick = function () { ST.msg = 'Syncing…'; fillPop(); sync(true); };
+    pop.querySelector('#acxBridgeCopy').onclick = function () {
+      var u = user() || {}, txt = JSON.stringify({ app: APP, companyId: ST.company, loginEmail: u.email || '', status: ST.state, message: ST.msg, books: ST.counts, extra: ST.extra || '', lastError: ST.err || '', lastRun: ST.at ? ST.at.toISOString() : '', page: (location && location.host || '') + (location && location.pathname || '') }, null, 2), b = this;
+      var done = function () { b.textContent = 'Copied ✓'; setTimeout(function () { b.textContent = 'Copy details'; }, 1800); };
+      try { navigator.clipboard.writeText(txt).then(done, function () { fallbackCopy(txt); done(); }); } catch (e) { fallbackCopy(txt); done(); }
+    };
     pop.querySelector('#acxBridgeX').onclick = function () { pop.remove(); pop = null; };
   }
+  function fallbackCopy(t) { try { var a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); } catch (e) {} }
   function togglePop() {
     if (pop) { pop.remove(); pop = null; return; }
     pop = document.createElement('div'); pop.style.cssText = 'position:fixed;left:12px;bottom:46px;z-index:99991;background:#fff;color:#111;border:1px solid #e5e7eb;border-radius:10px;padding:12px;width:min(340px,92vw);font:12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.2)';
@@ -422,7 +428,7 @@
     return any;
   }
 
-  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks'); return k; }
+  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks'); if (APP === 'projects') k.push('plans', 'budgets'); return k; }
 
   async function sync(force) {
     if (busy) return; var u = user(); APP = detect();
@@ -444,13 +450,18 @@
       ['customers', 'invoices', 'suppliers', 'employees', 'projects'].forEach(function (k) { try { var a = rows[k] && JSON.parse(rows[k].value); if (typeof a === 'string') a = JSON.parse(a); if (Array.isArray(a)) nB[k[0]] = a.length; } catch (e) {} });
       ST.counts = APP === 'projects' ? 'Books has ' + nB.p + ' projects for this company ID.' : APP === 'payroll' ? 'Books has ' + nB.e + ' employees for this company ID.' : 'Books has ' + nB.c + ' customers, ' + nB.i + ' invoices, ' + nB.s + ' suppliers for this company ID.';
       if (APP === 'projects') { try { var cu = rows.customers && JSON.parse(rows.customers.value); if (typeof cu === 'string') cu = JSON.parse(cu); clientNames = (cu || []).map(function (x) { return x && x.name; }).filter(Boolean).sort(); applyClientList(); } catch (e) {} }
+      if (APP === 'projects') {
+        var bd = { plans: [], budgets: [] };
+        ['plans', 'budgets'].forEach(function (k) { try { var v = rows[k] && JSON.parse(rows[k].value); if (typeof v === 'string') v = JSON.parse(v); if (Array.isArray(v)) bd[k] = v; } catch (e) {} });
+        w.AcaciaBooksData = bd; ST.extra = bd.plans.length + ' plans and ' + bd.budgets.length + ' budgets from Books are available in the project form.';
+      }
       var inbox = []; try { if (rows.appInbox) { var q = JSON.parse(rows.appInbox.value); if (typeof q === 'string') q = JSON.parse(q); if (Array.isArray(q)) inbox = q; } } catch (e) {}
       var out = { inbox: [], paid: [], runs: [], usedNames: {} }, ad = A[APP], c1 = false, c2 = false, c3 = false;
       try { var iv = rows.invoices && JSON.parse(rows.invoices.value); if (typeof iv === 'string') iv = JSON.parse(iv); (iv || []).forEach(function (x) { if (x && x.customer) out.usedNames[low(x.customer)] = 1; }); } catch (e) {}
       if (ad.cust) c1 = await pass(u.companyId, ad.cust, ad.view || custView, rows, ad.key || 'customers', false, inbox, out);
       if (ad.inv) c2 = await pass(u.companyId, ad.inv, invView, rows, 'invoices', true, inbox, out);
       c3 = queuePayments(ad, out); c3 = queueRuns(out) || c3;
-      ST.extra = ''; if (ad.afterRead) { try { c3 = ad.afterRead(rows) || c3; } catch (e) { console.warn('[acacia-bridge] accounts', e); } }
+      var keepExtra = ST.extra; ST.extra = APP === 'projects' ? keepExtra : ''; if (ad.afterRead) { try { c3 = ad.afterRead(rows) || c3; } catch (e) { console.warn('[acacia-bridge] accounts', e); } }
       if (out.inbox.length) {
         await w.AcaciaCloud.rpc('acx_books_upsert', { p_company: u.companyId, p_key: 'appInbox', p_records: out.inbox });
         out.paid.forEach(function (id) { reg('pay')[id] = 1; });
@@ -458,7 +469,7 @@
       }
       setSt((APP === 'projects' ? nB.p : APP === 'payroll' ? nB.e : nB.c + nB.i + nB.s) === 0 ? 'warn' : 'ok', (APP === 'projects' ? nB.p : APP === 'payroll' ? nB.e : nB.c + nB.i + nB.s) === 0 ? 'Connected, but Books has no customers, invoices or suppliers under this company ID (for Payroll: no employees, for Projects: no projects). If Books does have data, Books is using a different company ID than this login — run acacia_sync_diagnose.sql in Supabase to compare.' : 'Connected and in sync.');
       if (c1 || c2 || c3 || out.inbox.length) { selfSave = true; try { ad.save(); } finally { selfSave = false; } try { var a = document.activeElement; if (!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) ad.render(); } catch (e) {} }
-    } catch (e) { console.error('[acacia-bridge]', e); setSt('error', explain(e)); }
+    } catch (e) { console.error('[acacia-bridge]', e); ST.err = String((e && (e.message || e.code || e.status)) || e); setSt('error', explain(e)); }
     busy = false;
   }
   function soon(ms) { clearTimeout(timer); timer = setTimeout(sync, ms || 4000); }

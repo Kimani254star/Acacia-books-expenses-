@@ -118,14 +118,27 @@ function hpContact(e){
   async function gate(cid, login) {
     try { if ((await rpc('acx_account_state', { p_company: low(cid), p_login: low(login) })) === 'deleted') return 'This account was removed by Acacia support.'; } catch (e) {}
     try {
-      var acc = await rpc('acx_app_access', { p_company: String(cid || ''), p_login: low(login), p_app: String((cfg && cfg.app) || '').toLowerCase() });
-      if (acc === 'not_paid') return 'Your company has not paid for this app yet. Ask your admin to add it to your plan in Acacia Books (Settings > Subscription), then sign in again.';
-      if (acc === 'expired') return 'Your company subscription has ended. Renew it in Acacia Books to open this app again.';
-      if (acc === 'no_access') return 'Your admin has not given you access to this app. Ask them to tick it under User Management > App access in Acacia Books.';
-    } catch (e) {}
-    try {
       var r = await req('acacia_company_status?select=status&company_id=eq.' + enc(cid));
       if (r.ok) { var j = await r.json(); var s = j[0] && j[0].status; if (s === 'pending') return 'Your company is waiting for approval by Acacia support. You will be able to sign in as soon as it is approved.'; if (s && s !== 'active') return 'Your company account is "' + s + '". Please contact Acacia support.'; }
+    } catch (e) {}
+    /* paid add-on apps: the company's subscription must include this app (fails open if the status row can't be read) */
+    try {
+      var ADDON = { crm: 'Acacia CRM', projects: 'Acacia Projects', payroll: 'Acacia Payroll', sell: 'Acacia Sell' };
+      var appKey = low(cfg && cfg.app), appName = ADDON[appKey];
+      if (appName) {
+        var r2 = await req('acacia_company_status?select=*&company_id=eq.' + enc(cid));
+        if (r2.ok) {
+          var row = (await r2.json())[0];
+          if (row) {
+            var plan = low(row.plan), apps = String(row.apps || '').split(',').map(function (x) { return low(x); }).filter(Boolean);
+            var lapsed = row.paid_until && !isNaN(new Date(row.paid_until)) && new Date(row.paid_until) < new Date();
+            if (lapsed || (row.downgraded_at && plan === 'free' && !row.paid_until)) return 'Your Acacia subscription has expired, so ' + appName + ' is locked. Renew it in Books (Subscription) to continue.';
+            var legacy = row.all_apps === null || row.all_apps === undefined;      /* companies created before apps were recorded stay open */
+            var all = row.all_apps === true || low(row.all_apps) === 'true' || plan === 'all access' || apps.indexOf('*') > -1 || apps.indexOf('all') > -1;
+            if (!legacy && !all && apps.indexOf(appKey) < 0) return appName + " is not part of your company's subscription. Ask your company admin to add it under Subscription in Books, or upgrade to All Access.";
+          }
+        }
+      }
     } catch (e) {}
     return null;
   }
