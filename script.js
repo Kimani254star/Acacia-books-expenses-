@@ -796,7 +796,7 @@ function renderExpenseTable(){
 
   host.innerHTML = `<table>
     <thead><tr>
-      ${[['date','Date'],['expNo','Cost #'],['description','Description'],['supplierName','Vendor'],['category','Category'],['taxRate','VAT / Tax'],['total','Amount'],['status','Status']].map(([k,l])=>`<th style="cursor:pointer;${k==='total'?'text-align:right;':''}" onclick="sortCosts('${k}')">${l}${window.expSort.key===k?(window.expSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}
+      ${[['date','Date'],['expNo','Cost #'],['description','Description'],['supplierName','Vendor'],['category','Category'],['taxRate','VAT / Tax'],['total','Amount'],['status','Status']].map(([k,l])=>`<th style="cursor:pointer;${k==='total'?'text-align:right;':''}" onclick="sortCosts('${k}')">${l}${window.expSort.key===k?(window.expSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}<th class="acx-cell"></th>
     </tr></thead>
     <tbody>
       ${list.map(e=>`
@@ -809,6 +809,7 @@ function renderExpenseTable(){
           <td>${e.taxRate>0 ? 'VAT '+e.taxRate+'%' : '—'}</td>
           <td class="num">${fmtPlain(e.total)}</td>
           <td><span class="status-pill ${statusClass(e.status)}">${e.status}</span></td>
+          <td class="acx-cell">${ACX_ACT({view:`openDetail('${e.id}')`, edit:`openEditExpense('${e.id}')`, clone:`rowCloneExpense('${e.id}')`, del:`rowDeleteExpense('${e.id}')`})}</td>
         </tr>`).join('')}
     </tbody>
   </table>`;
@@ -830,29 +831,83 @@ function renderSuppliers(){
     return;
   }
   host.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Name</th><th>Contact</th><th style="text-align:right;">Expenses recorded</th></tr></thead>
+    <thead><tr><th>Name</th><th>Contact</th><th style="text-align:right;">Expenses recorded</th><th class="acx-cell"></th></tr></thead>
     <tbody>${db.suppliers.map(s=>{
       const count = db.expenses.filter(e=>e.supplierId===s.id).length;
-      return `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.contact||'—')}</td><td class="num">${count}</td></tr>`;
+      return `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.contact||'—')}</td><td class="num">${count}</td><td class="acx-cell">${ACX_ACT({view:`previewSupplier('${s.id}')`, edit:`openEditSupplier('${s.id}')`, clone:`cloneSupplier('${s.id}')`, del:`deleteSupplier('${s.id}')`})}</td></tr>`;
     }).join('')}</tbody>
   </table></div>`;
 }
 
+let editingSupplierId = null;
+function setSupplierPanel(title, sub, readOnly){
+  const p = document.getElementById('supplierPanel');
+  p.querySelector('.det-title').textContent = title;
+  p.querySelector('.det-sub').textContent = sub;
+  ['s_name','s_contact','s_notes'].forEach(id=>{ document.getElementById(id).disabled = !!readOnly; });
+  p.querySelector('.side-foot').style.display = readOnly ? 'none' : '';
+}
+function fillSupplierPanel(s){
+  document.getElementById('s_name').value = s ? s.name : '';
+  document.getElementById('s_contact').value = s ? (s.contact||'') : '';
+  document.getElementById('s_notes').value = s ? (s.notes||'') : '';
+}
 function openNewSupplier(){
-  document.getElementById('s_name').value='';
-  document.getElementById('s_contact').value='';
-  document.getElementById('s_notes').value='';
+  editingSupplierId = null;
+  fillSupplierPanel(null);
+  setSupplierPanel('New Supplier', 'Add a vendor', false);
   openPanel('supplierPanel');
+}
+function openEditSupplier(id){
+  const s = db.suppliers.find(x=>x.id===id); if(!s) return;
+  editingSupplierId = id;
+  fillSupplierPanel(s);
+  setSupplierPanel('Edit Supplier', s.name, false);
+  openPanel('supplierPanel');
+}
+function previewSupplier(id){
+  const s = db.suppliers.find(x=>x.id===id); if(!s) return;
+  editingSupplierId = null;
+  fillSupplierPanel(s);
+  setSupplierPanel(s.name, 'Supplier details', true);
+  openPanel('supplierPanel');
+}
+function cloneSupplier(id){
+  const s = db.suppliers.find(x=>x.id===id); if(!s) return;
+  db.suppliers.push({id:'sup_'+Date.now(), name:s.name+' (Copy)', contact:s.contact||'', notes:s.notes||''});
+  saveDB(); renderSuppliers(); populateSupplierSelect();
+  showToast('Supplier cloned');
+}
+function deleteSupplier(id){
+  const s = db.suppliers.find(x=>x.id===id); if(!s) return;
+  const used = db.expenses.filter(e=>e.supplierId===id).length;
+  if(used){ showToast('Cannot delete: ' + used + ' expense' + (used===1?'':'s') + ' use this supplier'); return; }
+  if(!confirm('Delete supplier "' + s.name + '"? This cannot be undone.')) return;
+  db.suppliers = db.suppliers.filter(x=>x.id!==id);
+  saveDB(); renderSuppliers(); populateSupplierSelect();
+  showToast('Supplier deleted');
 }
 function saveSupplier(){
   const name = document.getElementById('s_name').value.trim();
   if(!name){ showToast('Supplier name is required'); return; }
-  db.suppliers.push({id:'sup_'+Date.now(), name, contact:document.getElementById('s_contact').value.trim(), notes:document.getElementById('s_notes').value.trim()});
+  const contact = document.getElementById('s_contact').value.trim(), notes = document.getElementById('s_notes').value.trim();
+  const wasEdit = !!editingSupplierId;
+  if(wasEdit){
+    const s = db.suppliers.find(x=>x.id===editingSupplierId);
+    if(s){
+      Object.assign(s, {name, contact, notes});
+      db.expenses.forEach(e=>{ if(e.supplierId===s.id) e.supplierName = name; });
+    }
+  } else {
+    db.suppliers.push({id:'sup_'+Date.now(), name, contact, notes});
+  }
+  editingSupplierId = null;
   saveDB();
   closeAllPanels();
   renderSuppliers();
   populateSupplierSelect();
-  showToast('Supplier added');
+  if(typeof renderExpenseTable==='function') renderExpenseTable();
+  showToast(wasEdit ? 'Supplier updated' : 'Supplier added');
 }
 
 /* ================= CATEGORIES ================= */
@@ -1153,6 +1208,10 @@ function advanceStatus(){
 }
 
 function editCurrentExpense(){ closeAllPanels(); openEditExpense(currentDetailId); }
+
+/* row buttons: same logic as the detail panel, but for the row's own expense */
+function rowCloneExpense(id){ currentDetailId = id; duplicateCurrentExpense(); }
+function rowDeleteExpense(id){ currentDetailId = id; deleteCurrentExpense(); }
 
 function duplicateCurrentExpense(){
   const e = db.expenses.find(x=>x.id===currentDetailId);
