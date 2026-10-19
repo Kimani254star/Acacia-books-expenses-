@@ -197,7 +197,7 @@
         make: function (b) { return { id: 'sup_bk' + hx(String(b.id)).slice(0, 8), name: b.name, contact: b.primaryEmail || b.phone || '', notes: '' }; },
         apply: function (s, b) { s.name = b.name; s.contact = b.primaryEmail || b.phone || s.contact || ''; },
         add: function (s) { db().suppliers.push(s); },
-        inUse: function (s) { return (db().expenses || []).some(function (e) { return e.supplierId === s.id; }); }
+        inUse: function (s) { return (db().expenses || []).some(function (e) { return e.supplierId === s.id; }) || (db().bills || []).some(function (x) { return x.supplierId === s.id; }) || (db().recurringBills || []).some(function (x) { return x.supplierId === s.id; }); }
       },
       afterRead: function (rows) {
         var d = db(), changed = false;
@@ -222,6 +222,15 @@
             if (h(cats) !== d._bkCat) { d.categories = cats; d._bkCat = h(cats); changed = true; }
           }
         }
+        if (coa) {                                                         /* same account list as Books' bill "Chart of account" box */
+          var BT = ['Expense', 'Cost of Goods Sold', 'Other Expense', 'Depreciation', 'Personnel Costs', 'Marketing Expense', 'Finance Costs', 'Repairs & Maintenance', 'Insurance Costs', 'Liability', 'Other Current Liability', 'Accounts Payable', 'Non Current Liability', 'Other Liability', 'Credit Card'];
+          var ba = coa.filter(function (a) { return a && a.name && BT.indexOf(a.type) > -1; }).sort(function (x, y) { return String(x.code || '').localeCompare(String(y.code || ''), undefined, { numeric: true, sensitivity: 'base' }); }).map(function (a) { return { name: a.name, code: a.code == null ? '' : String(a.code), type: a.type }; });
+          if (h(ba) !== d._bkBillAcc) { d.billAccounts = ba; d._bkBillAcc = h(ba); changed = true; }
+        }
+        if (banks) {
+          var bl = banks.map(function (x, i) { return x && { name: x.name || x.bankName || x.accountName || ('Bank #' + (i + 1)), currency: x.currency || '', balance: Number(x.balance) || 0 }; }).filter(Boolean);
+          if (h(bl) !== d._bkBanks) { d.booksBanks = bl; d._bkBanks = h(bl); changed = true; }
+        }
         if (banks) {
           try {
             var sel = document.getElementById('f_payaccount');
@@ -232,7 +241,7 @@
         return changed;
       },
       save: function () { saveDB(); },
-      render: function () { try { renderSuppliers(); populateSupplierSelect(); } catch (e) {} try { populateAccountSelect(); } catch (e) {} try { renderCategories(); } catch (e) {} }
+      render: function () { try { renderSuppliers(); populateSupplierSelect(); } catch (e) {} try { populateAccountSelect(); } catch (e) {} try { renderCategories(); } catch (e) {} try { renderBills(); renderBulkBills(); renderRecurring(); } catch (e) {} }
     },
     crm: {
       cust: {
@@ -460,6 +469,34 @@
     return any;
   }
 
+  /* Expenses: every bill (normal, bulk, recurring) -> Books "From other apps" inbox, once. Books posts it with its own ledger code. */
+  function queueBills(out) {
+    if (APP !== 'expenses') return false;
+    var d = db(), R = reg('bill'), any = false;
+    (d.bills || []).forEach(function (b) {
+      if (!b || R[b.id] || !(Number(b.total) > 0)) return;
+      out.inbox.push({
+        id: 'bill-' + b.id, type: 'bill', status: 'pending', app: 'Expenses', billId: b.id, kind: b.source || 'bill', billNo: b.billNo,
+        date: b.date, supplier: b.supplierName || '', chartOfAccount: b.category || '', termDays: Number(b.termDays) || 0, lpo: b.reference || '',
+        currency: b.currency || 'KES', currencyRate: Number(b.currencyRate) || 1, description: b.description || '',
+        items: (b.items || []).map(function (i) { return { desc: i.desc, qty: Number(i.qty) || 0, price: Number(i.price) || 0, taxRate: String(i.taxRate), subtotal: r2(i.subtotal), vat: r2(i.vat), type: 'service' }; }),
+        subtotal: r2(b.subtotal), vat: r2(b.vat), total: r2(b.total),
+        recurringId: b.recurringId || '', recurringNumber: b.recurringNumber || '', recurringRun: b.recurringRun || '', createdAt: new Date().toISOString()
+      });
+      out.bills.push(b.id); any = true;
+    });
+    var P = reg('bpay');
+    (d.bills || []).forEach(function (b) {
+      (b.payments || []).forEach(function (p) {
+        if (!p.id) p.id = 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+        if (P[p.id] || !(Number(p.amount) > 0)) return;
+        out.inbox.push({ id: 'bpay-' + p.id, type: 'billPayment', status: 'pending', app: 'Expenses', paymentId: p.id, billId: b.id, billNo: b.billNo, kind: b.source || 'bill', supplier: b.supplierName || '', date: p.date || today(), amount: r2(p.amount), bank: p.bank || '', method: p.method || 'Bank Transfer', createdAt: new Date().toISOString() });
+        out.bpays.push(p.id); any = true;
+      });
+    });
+    return any;
+  }
+
   function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
 
   async function sync(force) {
@@ -488,16 +525,18 @@
         w.AcaciaBooksData = bd; ST.extra = bd.plans.length + ' plans and ' + bd.budgets.length + ' budgets from Books are available in the project form.';
       }
       var inbox = []; try { if (rows.appInbox) { var q = JSON.parse(rows.appInbox.value); if (typeof q === 'string') q = JSON.parse(q); if (Array.isArray(q)) inbox = q; } } catch (e) {}
-      var out = { inbox: [], paid: [], runs: [], usedNames: {} }, ad = A[APP], c1 = false, c2 = false, c3 = false;
+      var out = { inbox: [], paid: [], runs: [], bills: [], bpays: [], usedNames: {} }, ad = A[APP], c1 = false, c2 = false, c3 = false;
       try { var iv = rows.invoices && JSON.parse(rows.invoices.value); if (typeof iv === 'string') iv = JSON.parse(iv); (iv || []).forEach(function (x) { if (x && x.customer) out.usedNames[low(x.customer)] = 1; }); } catch (e) {}
       if (ad.cust) c1 = await pass(u.companyId, ad.cust, ad.view || custView, rows, ad.key || 'customers', false, inbox, out);
       if (ad.inv) c2 = await pass(u.companyId, ad.inv, invView, rows, 'invoices', true, inbox, out);
-      c3 = queuePayments(ad, out); c3 = queueRuns(out) || c3;
+      c3 = queuePayments(ad, out); c3 = queueRuns(out) || c3; c3 = queueBills(out) || c3;
       var keepExtra = ST.extra; ST.extra = APP === 'projects' ? keepExtra : ''; if (ad.afterRead) { try { c3 = ad.afterRead(rows) || c3; } catch (e) { console.warn('[acacia-bridge] accounts', e); } }
       if (out.inbox.length) {
         await w.AcaciaCloud.rpc('acx_books_upsert', { p_company: u.companyId, p_key: 'appInbox', p_records: out.inbox });
         out.paid.forEach(function (id) { reg('pay')[id] = 1; });
         out.runs.forEach(function (id) { reg('run')[id] = 1; });
+        out.bills.forEach(function (id) { reg('bill')[id] = 1; });
+        out.bpays.forEach(function (id) { reg('bpay')[id] = 1; });
       }
       setSt((APP === 'projects' ? nB.p : APP === 'payroll' ? nB.e : nB.c + nB.i + nB.s) === 0 ? 'warn' : 'ok', (APP === 'projects' ? nB.p : APP === 'payroll' ? nB.e : nB.c + nB.i + nB.s) === 0 ? 'Connected, but Books has no customers, invoices or suppliers under this company ID (for Payroll: no employees, for Projects: no projects). If Books does have data, Books is using a different company ID than this login — run acacia_sync_diagnose.sql in Supabase to compare.' : 'Connected and in sync.');
       if (c1 || c2 || c3 || out.inbox.length) { selfSave = true; try { ad.save(); } finally { selfSave = false; } try { var a = document.activeElement; if (!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) ad.render(); } catch (e) {} }
