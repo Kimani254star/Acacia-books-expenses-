@@ -364,10 +364,9 @@
     <div class="nav-group">
       <div class="nav-label">Transactions</div>
       <div class="nav-item" data-view="expenses"><span class="nav-dot"></span>Operational Costs</div>
-      <div class="nav-item" data-view="bills"><span class="nav-dot"></span>Bills</div>
-      <div class="nav-item" data-view="bulkbills"><span class="nav-dot"></span>Bulk Bills</div>
+      <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Bills</div>
       <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Payments</div>
-      <div class="nav-item" data-view="recurring"><span class="nav-dot"></span>Recurring Expenses</div>
+      <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Recurring Expenses</div>
     </div>
 
     <div class="nav-group">
@@ -475,39 +474,6 @@
         </div>
         <div id="expenseTableHost"></div>
       </div>
-    </div>
-
-    <!-- BILLS -->
-    <div class="view" id="view-bills">
-      <div class="view-header">
-        <div><div class="view-title">Bills</div><div class="view-sub" id="billCountLine">0 bills</div></div>
-        <div class="toolbar"><button class="btn btn-primary" onclick="acxBillForm()">＋ New Bill</button></div>
-      </div>
-      <div class="table-wrap">
-        <div class="filter-bar">
-          <input class="grow" type="text" id="billFilterText" placeholder="Filter by bill #, supplier, description, account..." oninput="renderBills()">
-          <select id="billFilterStatus" onchange="renderBills()"><option value="">All payment statuses</option><option>Unpaid</option><option>Partially Paid</option><option>Paid</option></select>
-        </div>
-        <div id="billsHost"></div>
-      </div>
-    </div>
-
-    <!-- BULK BILLS -->
-    <div class="view" id="view-bulkbills">
-      <div class="view-header">
-        <div><div class="view-title">Bulk Bills</div><div class="view-sub" id="bulkBillCountLine">0 bulk bills</div></div>
-        <div class="toolbar"><button class="btn btn-primary" onclick="acxBulkBillForm()">＋ New Bulk Bill</button></div>
-      </div>
-      <div class="table-wrap"><div id="bulkBillsHost"></div></div>
-    </div>
-
-    <!-- RECURRING BILLS -->
-    <div class="view" id="view-recurring">
-      <div class="view-header">
-        <div><div class="view-title">Recurring Expenses</div><div class="view-sub" id="recurringCountLine">0 templates</div></div>
-        <div class="toolbar"><button class="btn" onclick="var n=acxRunRecurring();renderRecurring();renderBills();showToast(n?n+' bill(s) created':'Nothing is due yet')">Create due bills now</button><button class="btn btn-primary" onclick="acxRecForm()">＋ New Recurring Bill</button></div>
-      </div>
-      <div class="table-wrap"><div id="recurringHost"></div></div>
     </div>
 
     <!-- SUPPLIERS -->
@@ -710,7 +676,6 @@
 
 <script src="acacia-actions.js"></script>
 <script src="script.js"></script>
-<script src="acacia-bills.js"></script>
 <script src="acacia-bridge.js"></script>
 <script src="acacia-help.js"></script>
 <script src="acacia-sidebar.js"></script>

@@ -482,11 +482,7 @@ function defaultDB(){
     expenses: [],
     suppliers: [],
     categories: DEFAULT_CATEGORIES,
-    nextExpNo: 1,
-    bills: [],
-    recurringBills: [],
-    nextBillNo: 1,
-    nextRecNo: 1
+    nextExpNo: 1
   };
 }
 
@@ -496,10 +492,6 @@ function loadDB(companyId){
     if(!raw) throw new Error('none');
     const parsed = JSON.parse(raw);
     if(!parsed.categories) parsed.categories = DEFAULT_CATEGORIES;
-    if(!Array.isArray(parsed.bills)) parsed.bills = [];
-    if(!Array.isArray(parsed.recurringBills)) parsed.recurringBills = [];
-    if(!parsed.nextBillNo) parsed.nextBillNo = 1;
-    if(!parsed.nextRecNo) parsed.nextRecNo = 1;
     return parsed;
   }catch(e){
     const blank = defaultDB();
@@ -697,18 +689,11 @@ function initUser(){
 }
 
 /* ================= DASHBOARD ================= */
-/* Operational Costs + Bills (incl. Bulk and Recurring bills) - one list for the Dashboard, Reports and Categories */
-function costRows(){
-  let bills = [];
-  try{ if(typeof window.acxBillRows==='function') bills = window.acxBillRows(); }catch(e){ console.warn('bills', e); }
-  return db.expenses.concat(bills);
-}
-
 function renderDashboard(){
   const now = new Date();
   document.getElementById('dashDateLine').textContent = now.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
-  const exps = costRows();
+  const exps = db.expenses;
   const total = exps.reduce((s,e)=>s+e.total,0);
   const monthKey = now.toISOString().slice(0,7);
   const thisMonth = exps.filter(e=>e.date.slice(0,7)===monthKey).reduce((s,e)=>s+e.total,0);
@@ -895,8 +880,8 @@ function cloneSupplier(id){
 }
 function deleteSupplier(id){
   const s = db.suppliers.find(x=>x.id===id); if(!s) return;
-  const used = db.expenses.filter(e=>e.supplierId===id).length + (db.bills||[]).filter(b=>b.supplierId===id).length + (db.recurringBills||[]).filter(r=>r.supplierId===id).length;
-  if(used){ showToast('Cannot delete: ' + used + ' expense' + (used===1?'':'s') + ', bill' + (used===1?'':'s') + ' or recurring bill' + (used===1?'':'s') + ' use this supplier'); return; }
+  const used = db.expenses.filter(e=>e.supplierId===id).length;
+  if(used){ showToast('Cannot delete: ' + used + ' expense' + (used===1?'':'s') + ' use this supplier'); return; }
   if(!confirm('Delete supplier "' + s.name + '"? This cannot be undone.')) return;
   db.suppliers = db.suppliers.filter(x=>x.id!==id);
   saveDB(); renderSuppliers(); populateSupplierSelect();
@@ -930,7 +915,7 @@ function renderCategories(){
   const host = document.getElementById('categoryTree');
   host.innerHTML = Object.entries(db.categories).map(([parent, children])=>{
     return `<div class="tree-parent">${parent}</div>` + children.map(c=>{
-      const count = costRows().filter(e=>e.category===c).length;
+      const count = db.expenses.filter(e=>e.category===c).length;
       return `<div class="tree-child"><span>${c}</span><span class="cnt">${count} expense${count===1?'':'s'}</span></div>`;
     }).join('');
   }).join('');
@@ -994,7 +979,7 @@ function renderConnectStatus(){
 
 /* ================= REPORTS ================= */
 function renderReports(){
-  const exps = costRows();
+  const exps = db.expenses;
   const wrap = (rows, emptyMsg) => rows.length ? rows.join('') : `<div class="hint" style="color:var(--ink-soft);font-size:13px;">${emptyMsg}</div>`;
 
   // by category
