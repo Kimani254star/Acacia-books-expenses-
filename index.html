@@ -364,14 +364,15 @@
     <div class="nav-group">
       <div class="nav-label">Transactions</div>
       <div class="nav-item" data-view="expenses"><span class="nav-dot"></span>Operational Costs</div>
-      <div class="nav-item" data-view="bills"><span class="nav-dot"></span>Bills</div>
-      <div class="nav-item" data-view="bulkbills"><span class="nav-dot"></span>Bulk Bills</div>
       <div class="nav-item disabled" title="Not part of this module yet"><span class="nav-dot"></span>Payments</div>
-      <div class="nav-item" data-view="recurring"><span class="nav-dot"></span>Recurring Expenses</div>
     </div>
 
     <div class="nav-group">
-      <div class="nav-label">Purchasing</div>
+      <div class="nav-label">Purchase Hub</div>
+      <div class="nav-item" data-view="bills"><span class="nav-dot"></span>Bills</div>
+      <div class="nav-item" data-view="bulkbills"><span class="nav-dot"></span>Bulk Bills</div>
+      <div class="nav-item" data-view="recurring"><span class="nav-dot"></span>Recurring Bills</div>
+      <div class="nav-item" data-view="grn"><span class="nav-dot"></span>Goods Received</div>
       <div class="nav-item" data-view="suppliers"><span class="nav-dot"></span>Suppliers</div>
     </div>
 
@@ -504,10 +505,22 @@
     <!-- RECURRING BILLS -->
     <div class="view" id="view-recurring">
       <div class="view-header">
-        <div><div class="view-title">Recurring Expenses</div><div class="view-sub" id="recurringCountLine">0 templates</div></div>
+        <div><div class="view-title">Recurring Bills</div><div class="view-sub" id="recurringCountLine">0 templates</div></div>
         <div class="toolbar"><button class="btn" onclick="var n=acxRunRecurring();renderRecurring();renderBills();showToast(n?n+' bill(s) created':'Nothing is due yet')">Create due bills now</button><button class="btn btn-primary" onclick="acxRecForm()">＋ New Recurring Bill</button></div>
       </div>
       <div class="table-wrap"><div id="recurringHost"></div></div>
+    </div>
+
+    <!-- GOODS RECEIVED -->
+    <div class="view" id="view-grn">
+      <div class="view-header">
+        <div><div class="view-title">Goods Received</div><div class="view-sub" id="grnCountLine">0 GRNs</div></div>
+        <div class="toolbar"><button class="btn" onclick="acxGrnBulkDelete()">Bulk Delete</button><button class="btn btn-primary" onclick="acxGrnForm()">＋ Add GRN</button></div>
+      </div>
+      <div class="table-wrap">
+        <div class="filter-bar"><input class="grow" type="text" id="grnSearch" placeholder="Search GRNs by number, supplier, bill, location..." oninput="renderGRN()"></div>
+        <div id="grnHost"></div>
+      </div>
     </div>
 
     <!-- SUPPLIERS -->
@@ -711,6 +724,7 @@
 <script src="acacia-actions.js"></script>
 <script src="script.js"></script>
 <script src="acacia-bills.js"></script>
+<script src="acacia-grn.js"></script>
 <script src="acacia-bridge.js"></script>
 <script src="acacia-help.js"></script>
 <script src="acacia-sidebar.js"></script>

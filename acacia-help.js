@@ -37,7 +37,7 @@
    "id": "suppliers",
    "module": "Suppliers",
    "desc": "the people and companies you buy from.",
-   "tip": "Under Purchasing, click Suppliers.",
+   "tip": "Under Purchase Hub, click Suppliers.",
    "keywords": [
     "supplier",
     "vendor",
