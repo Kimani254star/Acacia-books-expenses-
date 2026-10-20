@@ -497,6 +497,44 @@
     return any;
   }
 
+  /* Expenses: direct expense records ("operational costs") -> Books inbox, once. Only PAID ones go: in Books an operational cost is money
+   * that has already left a bank account, so unpaid / draft expenses wait until they are marked paid. Books posts them with its own cost code. */
+  function queueExpenses(out) {
+    if (APP !== 'expenses') return false;
+    var d = db(), R = reg('exp'), any = false;
+    (d.expenses || []).forEach(function (e) {
+      if (!e || !e.id || R[e.id] || !(Number(e.total) > 0)) return;
+      if (!(e.paymentStatus === 'Paid' || e.status === 'Paid')) return;
+      out.inbox.push({
+        id: 'exp-' + e.id, type: 'expense', status: 'pending', app: 'Expenses', expId: e.id, expNo: e.expNo || '', date: e.date || today(),
+        description: e.description || '', supplier: e.supplierName || '', category: e.category || '', reference: e.reference || '',
+        currency: e.currency || 'KES', amount: r2(e.amount), taxRate: Number(e.taxRate) || 0, vat: r2(e.taxAmount), total: r2(e.total),
+        bank: e.paymentAccount || '', notes: e.notes || '', createdAt: new Date().toISOString()
+      });
+      out.exps.push(e.id); any = true;
+    });
+    return any;
+  }
+
+  /* Expenses: goods received notes (GRN) that are marked Received -> Books inbox, once. Drafts wait until they are added as received. */
+  function queueGrns(out) {
+    if (APP !== 'expenses') return false;
+    var d = db(), R = reg('grn'), any = false;
+    (d.grns || []).forEach(function (g) {
+      if (!g || !g.id || R[g.id] || g.status !== 'Received') return;
+      var items = (g.items || []).filter(function (i) { return i && Number(i.qtyReceived) > 0; }).map(function (i) { return { name: i.desc || 'Item', qty: Number(i.qtyReceived) || 0, billed: Number(i.qtyBilled) || 0 }; });
+      if (!items.length) return;
+      out.inbox.push({
+        id: 'grn-' + g.id, type: 'grn', status: 'pending', app: 'Expenses', grnId: g.id, grnNo: g.number || '', date: g.date || today(),
+        supplier: g.supplierName || '', billId: g.billId || '', billNo: g.billNo || '', description: g.description || '', location: g.location || '',
+        reference: g.reference || '', collectionOption: g.collectionOption || '', receivedBy: g.receivedBy || '', trackNumber: g.trackNumber || '',
+        items: items, createdAt: new Date().toISOString()
+      });
+      out.grns.push(g.id); any = true;
+    });
+    return any;
+  }
+
   function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
 
   async function sync(force) {
@@ -525,11 +563,11 @@
         w.AcaciaBooksData = bd; ST.extra = bd.plans.length + ' plans and ' + bd.budgets.length + ' budgets from Books are available in the project form.';
       }
       var inbox = []; try { if (rows.appInbox) { var q = JSON.parse(rows.appInbox.value); if (typeof q === 'string') q = JSON.parse(q); if (Array.isArray(q)) inbox = q; } } catch (e) {}
-      var out = { inbox: [], paid: [], runs: [], bills: [], bpays: [], usedNames: {} }, ad = A[APP], c1 = false, c2 = false, c3 = false;
+      var out = { inbox: [], paid: [], runs: [], bills: [], bpays: [], exps: [], grns: [], usedNames: {} }, ad = A[APP], c1 = false, c2 = false, c3 = false;
       try { var iv = rows.invoices && JSON.parse(rows.invoices.value); if (typeof iv === 'string') iv = JSON.parse(iv); (iv || []).forEach(function (x) { if (x && x.customer) out.usedNames[low(x.customer)] = 1; }); } catch (e) {}
       if (ad.cust) c1 = await pass(u.companyId, ad.cust, ad.view || custView, rows, ad.key || 'customers', false, inbox, out);
       if (ad.inv) c2 = await pass(u.companyId, ad.inv, invView, rows, 'invoices', true, inbox, out);
-      c3 = queuePayments(ad, out); c3 = queueRuns(out) || c3; c3 = queueBills(out) || c3;
+      c3 = queuePayments(ad, out); c3 = queueRuns(out) || c3; c3 = queueBills(out) || c3; c3 = queueExpenses(out) || c3; c3 = queueGrns(out) || c3;
       var keepExtra = ST.extra; ST.extra = APP === 'projects' ? keepExtra : ''; if (ad.afterRead) { try { c3 = ad.afterRead(rows) || c3; } catch (e) { console.warn('[acacia-bridge] accounts', e); } }
       if (out.inbox.length) {
         await w.AcaciaCloud.rpc('acx_books_upsert', { p_company: u.companyId, p_key: 'appInbox', p_records: out.inbox });
@@ -537,6 +575,8 @@
         out.runs.forEach(function (id) { reg('run')[id] = 1; });
         out.bills.forEach(function (id) { reg('bill')[id] = 1; });
         out.bpays.forEach(function (id) { reg('bpay')[id] = 1; });
+        out.exps.forEach(function (id) { reg('exp')[id] = 1; });
+        out.grns.forEach(function (id) { reg('grn')[id] = 1; });
       }
       setSt((APP === 'projects' ? nB.p : APP === 'payroll' ? nB.e : nB.c + nB.i + nB.s) === 0 ? 'warn' : 'ok', (APP === 'projects' ? nB.p : APP === 'payroll' ? nB.e : nB.c + nB.i + nB.s) === 0 ? 'Connected, but Books has no customers, invoices or suppliers under this company ID (for Payroll: no employees, for Projects: no projects). If Books does have data, Books is using a different company ID than this login — run acacia_sync_diagnose.sql in Supabase to compare.' : 'Connected and in sync.');
       if (c1 || c2 || c3 || out.inbox.length) { selfSave = true; try { ad.save(); } finally { selfSave = false; } try { var a = document.activeElement; if (!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) ad.render(); } catch (e) {} }
