@@ -53,6 +53,109 @@
   function pendingPaid(inbox, bookId) { var s = 0; (inbox || []).forEach(function (x) { if (x && x.type === 'payment' && x.status === 'pending' && String(x.invoiceId) === String(bookId)) s += Number(x.amount) || 0; }); return s; }
   function vatCat(i) { var c = Number(i.vatRate) || 0; return { rate: c, exempt: low(i.category) === 'exempt' }; }
 
+  /* ---------- Books -> Expenses: bills, operational costs and goods received notes (Expenses app only) ----------
+   * Books stays the owner of these records; Expenses holds a mirror. Each mirror keeps _bk = { k: Books id, h: fingerprint }, so it is
+   * updated when Books changes it, removed when Books deletes it, and is NEVER sent back to Books (it is also marked in _bkReg).
+   * Anything that started in Expenses (acxSrcApp === 'Expenses' in Books) is skipped, so nothing is counted twice.
+   * Needs acacia_books_to_expenses.sql run once in Supabase (lets acx_books_read return these four keys). */
+  var IMPORT_FROM = '';          /* optional: 'YYYY-MM-DD'. Only Books records dated on/after this day are mirrored. '' = everything. */
+  var IMP = { msg: '' };
+  function parseRow(rows, k) { try { var v = rows[k] && JSON.parse(rows[k].value); if (typeof v === 'string') v = JSON.parse(v); return Array.isArray(v) ? v : null; } catch (e) { return null; } }
+  function importFromBooks(rows) {
+    var d = db(), changed = false, N = { b: 0, c: 0, g: 0 }, cnt = { b: 0, c: 0, g: 0 };
+    var bills = parseRow(rows, 'bills'), costs = parseRow(rows, 'operationalCosts'), grns = parseRow(rows, 'grns'), pays = parseRow(rows, 'billPayments') || [];
+    d.bills = d.bills || []; d.expenses = d.expenses || []; d.grns = d.grns || [];
+    if (!bills && !costs && !grns) { IMP.msg = 'No Books bills, operational costs or GRNs were returned. If Books has some, run acacia_books_to_expenses.sql in Supabase, then press Sync now.'; return false; }
+    var supId = function (n) { var s = (d.suppliers || []).filter(function (x) { return low(x.name) === low(n); })[0]; return s ? s.id : null; };
+    var fromHere = function (x) { return x && x.acxSrcApp === 'Expenses'; };
+    var tooOld = function (dt) { return !!(IMPORT_FROM && String(dt || '').slice(0, 10) < IMPORT_FROM); };
+    var sumPay = function (a) { return a.reduce(function (s, p) { return s + (Number(p.amount) || 0); }, 0); };
+
+    /* generic mirror: add new, update changed, remove deleted. make(b,k) returns the Expenses fields for a Books record */
+    function mirror(list, books, idPrefix, regKey, keyOf, make, onNew, count) {
+      if (!books) return false;                                   /* Books did not return this list: leave Expenses alone */
+      var ch = false, seen = {}, byK = {};
+      list.forEach(function (x) { if (x && x._bk) byK[x._bk.k] = x; });
+      books.forEach(function (b) {
+        if (!b || fromHere(b)) return;
+        var k = keyOf(b); if (!k) return;
+        var rec = make(b), fp = h(rec);
+        if (tooOld(rec.date)) return;
+        seen[k] = 1; count.n++;
+        var x = byK[k];
+        if (x) {
+          if (x._bk.h !== fp) { var id = x.id, bk = x._bk; Object.keys(rec).forEach(function (f) { x[f] = rec[f]; }); x.id = id; x._bk = { k: bk.k, h: fp }; ch = true; }
+        } else {
+          rec.id = idPrefix + hx(k).slice(0, 10); rec._bk = { k: k, h: fp };
+          if (onNew) onNew(rec);
+          list.push(rec); ch = true;
+        }
+        reg(regKey)[(x && x.id) || rec.id] = 1;
+      });
+      for (var i = list.length - 1; i >= 0; i--) { if (list[i] && list[i]._bk && !seen[list[i]._bk.k]) { list.splice(i, 1); ch = true; } }
+      return ch;
+    }
+
+    /* 1. bills (+ their payments from Books) */
+    var cb = { n: 0 };
+    if (mirror(d.bills, bills, 'bill_bk', 'bill',
+      function (b) { return b.id ? 'b:' + b.id : (b.billNumber ? 'n:' + b.billNumber + '|' + low(b.supplier) : ''); },
+      function (b) {
+        var no = String(b.billNumber || ''), mine = pays.filter(function (p) { return p && String(p.billNumber) === no && (!p.supplier || !b.supplier || low(p.supplier) === low(b.supplier)); });
+        var items = (b.items || []).map(function (i) {
+          var q = Number(i.qty) || 0, pr = Number(i.price != null ? i.price : i.rate) || 0;
+          return { desc: String(i.desc || i.description || i.name || 'Item'), qty: q, price: pr, taxRate: String(i.taxRate != null ? i.taxRate : (i.vatRate != null ? i.vatRate : '16')), subtotal: r2(i.subtotal != null ? i.subtotal : q * pr), vat: r2(i.vat), type: 'service' };
+        });
+        var sub = b.subtotal != null ? r2(b.subtotal) : r2(items.reduce(function (s, i) { return s + i.subtotal; }, 0)), vat = b.vat != null ? r2(b.vat) : r2(items.reduce(function (s, i) { return s + i.vat; }, 0));
+        var total = b.total != null ? r2(b.total) : r2(sub + vat), term = Number(b.termDays) || 0, dt = String(b.date || today()).slice(0, 10), due = b.due || dt;
+        return {
+          billNo: no, date: dt, termDays: term, due: due, supplierId: supId(b.supplier), supplierName: b.supplier || '', category: b.chartOfAccount || b.account || '',
+          description: b.description || b.notes || '', reference: b.lpo || '', notes: '', currency: b.currency || 'KES', currencyRate: Number(b.currencyRate) || 1,
+          items: items, subtotal: sub, vat: vat, total: total, paidAmount: r2(Math.max(Number(b.paidAmount) || 0, sumPay(mine))),
+          payments: mine.map(function (p) { return { id: 'bkpay_' + hx(String(p.id == null ? p.date + p.amount : p.id)).slice(0, 8), date: String(p.date || dt).slice(0, 10), amount: r2(p.amount), bank: p.bank || '', method: p.mode || 'Bank Transfer' }; }),
+          source: 'books'
+        };
+      }, null, cb)) changed = true;
+    N.b = cb.n;
+    d.bills.forEach(function (b) { if (b && b._bk) (b.payments || []).forEach(function (p) { if (p && p.id) reg('bpay')[p.id] = 1; }); });
+
+    /* 2. operational costs -> Expenses records (always Paid: in Books a cost has already left a bank / current account) */
+    var cc = { n: 0 };
+    if (mirror(d.expenses, costs, 'exp_bk', 'exp',
+      function (c) { return c.id != null ? 'c:' + c.id : 'c:' + String(c.date || '') + '|' + low(c.description) + '|' + (Number(c.amount) || 0); },
+      function (c) {
+        var rate = Number(c.vatRate); if (!isFinite(rate)) rate = 0;
+        var gross = r2(c.amount), vat = r2(c.vat), net = c.netAmount != null ? r2(c.netAmount) : r2(gross - vat);
+        return {
+          date: String(c.date || today()).slice(0, 10), category: c.category || '', description: c.description || '', reference: '', currency: 'KES',
+          amount: net, taxRate: rate, taxAmount: vat, total: gross, supplierId: supId(c.vendor), supplierName: c.vendor || '',
+          paymentAccount: c.paidVia === 'current' ? (c.currentAccountName || c.currentAccount || '') : (c.bank || ''), paymentStatus: 'Paid', status: 'Paid',
+          notes: ['From Books', c.method ? 'via ' + c.method : '', c.notes || ''].filter(Boolean).join(' · '), attachmentName: c.attachmentName || ''
+        };
+      },
+      function (rec) { d._bkSeq = (Number(d._bkSeq) || 0) + 1; rec.expNo = 'BK-' + String(d._bkSeq).padStart(5, '0'); }, cc)) changed = true;
+    N.c = cc.n;
+    d.expenses.forEach(function (e) { if (e && e._bk && !e.expNo) { d._bkSeq = (Number(d._bkSeq) || 0) + 1; e.expNo = 'BK-' + String(d._bkSeq).padStart(5, '0'); changed = true; } });
+
+    /* 3. goods received notes (an Approved / non-draft Books GRN = Received; linked to the Expenses bill with the same number) */
+    var cg = { n: 0 };
+    if (mirror(d.grns, grns, 'grn_bk', 'grn',
+      function (g) { return g.id != null ? 'g:' + g.id : (g.number ? 'g:' + g.number : ''); },
+      function (g) {
+        var items = (g.items || []).map(function (i) { var q = Number(i.qty != null ? i.qty : i.quantity) || 0; return { desc: String(i.name || i.description || i.item || 'Item'), qtyBilled: q, qtyReceived: q }; });
+        var ref = String(g.reference || ''), bill = ref ? d.bills.filter(function (x) { return x && x.billNo === ref; })[0] : null;
+        return {
+          number: String(g.number || ''), date: String(g.date || today()).slice(0, 10), supplierId: supId(g.supplier), supplierName: g.supplier || '',
+          billId: bill ? bill.id : '', billNo: ref, description: g.description || '', location: g.location || '', reference: ref, collectionOption: g.collectionOption || '',
+          receivedBy: g.receiver || '', trackNumber: g.trackNo || '', items: items, status: /draft/i.test(String(g.status || '')) ? 'Draft' : 'Received'
+        };
+      }, null, cg)) changed = true;
+    N.g = cg.n;
+
+    IMP.msg = 'From Books: ' + N.b + ' bill' + (N.b === 1 ? '' : 's') + ', ' + N.c + ' operational cost' + (N.c === 1 ? '' : 's') + ', ' + N.g + ' GRN' + (N.g === 1 ? '' : 's') + (IMPORT_FROM ? ' (dated ' + IMPORT_FROM + ' or later)' : '') + ' kept in step.';
+    return changed;
+  }
+
   /* ---------------- adapters ---------------- */
   var A = {
     sell: {
@@ -201,6 +304,7 @@
       },
       afterRead: function (rows) {
         var d = db(), changed = false;
+        try { if (importFromBooks(rows)) changed = true; } catch (e) { console.warn('[acacia-bridge] books import', e); IMP.msg = 'Books bills, costs and GRNs could not be imported: ' + String((e && e.message) || e); }
         var arr = function (k) { try { var v = rows[k] && JSON.parse(rows[k].value); if (typeof v === 'string') v = JSON.parse(v); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
         var coa = arr('chartOfAccounts'), banks = arr('banks'), nAcc = 0;
         if (coa) {
@@ -237,11 +341,11 @@
             if (sel && sel.options) { banks.forEach(function (b) { var n = b && (b.name || b.bankName || b.accountName); if (!n) return; var has = Array.prototype.some.call(sel.options, function (o) { return low(o.value || o.text) === low(n); }); if (!has) { var o = document.createElement('option'); o.value = o.textContent = n; sel.appendChild(o); } }); }
           } catch (e) {}
         }
-        ST.extra = coa ? (nAcc ? nAcc + ' expense accounts come from the Books chart of accounts.' : 'Books has no expense accounts yet, so the built-in categories are being used.') : '';
+        ST.extra = (coa ? (nAcc ? nAcc + ' expense accounts come from the Books chart of accounts.' : 'Books has no expense accounts yet, so the built-in categories are being used.') : '') + (IMP.msg ? ' ' + IMP.msg : '');
         return changed;
       },
       save: function () { saveDB(); },
-      render: function () { try { renderSuppliers(); populateSupplierSelect(); } catch (e) {} try { populateAccountSelect(); } catch (e) {} try { renderCategories(); } catch (e) {} try { renderBills(); renderBulkBills(); renderRecurring(); } catch (e) {} }
+      render: function () { try { renderSuppliers(); populateSupplierSelect(); } catch (e) {} try { populateAccountSelect(); } catch (e) {} try { renderCategories(); } catch (e) {} try { renderBills(); renderBulkBills(); renderRecurring(); } catch (e) {} try { renderExpenseTable(); } catch (e) {} try { renderDashboard(); } catch (e) {} try { if (typeof w.renderGRN === 'function') w.renderGRN(); } catch (e) {} }
     },
     crm: {
       cust: {
@@ -474,7 +578,7 @@
     if (APP !== 'expenses') return false;
     var d = db(), R = reg('bill'), any = false;
     (d.bills || []).forEach(function (b) {
-      if (!b || R[b.id] || !(Number(b.total) > 0)) return;
+      if (!b || b._bk || R[b.id] || !(Number(b.total) > 0)) return;
       out.inbox.push({
         id: 'bill-' + b.id, type: 'bill', status: 'pending', app: 'Expenses', billId: b.id, kind: b.source || 'bill', billNo: b.billNo,
         date: b.date, supplier: b.supplierName || '', chartOfAccount: b.category || '', termDays: Number(b.termDays) || 0, lpo: b.reference || '',
@@ -487,6 +591,7 @@
     });
     var P = reg('bpay');
     (d.bills || []).forEach(function (b) {
+      if (b && b._bk) return;                                    /* bills that came from Books are paid in Books */
       (b.payments || []).forEach(function (p) {
         if (!p.id) p.id = 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
         if (P[p.id] || !(Number(p.amount) > 0)) return;
@@ -503,7 +608,7 @@
     if (APP !== 'expenses') return false;
     var d = db(), R = reg('exp'), any = false;
     (d.expenses || []).forEach(function (e) {
-      if (!e || !e.id || R[e.id] || !(Number(e.total) > 0)) return;
+      if (!e || e._bk || !e.id || R[e.id] || !(Number(e.total) > 0)) return;
       if (!(e.paymentStatus === 'Paid' || e.status === 'Paid')) return;
       out.inbox.push({
         id: 'exp-' + e.id, type: 'expense', status: 'pending', app: 'Expenses', expId: e.id, expNo: e.expNo || '', date: e.date || today(),
@@ -521,7 +626,7 @@
     if (APP !== 'expenses') return false;
     var d = db(), R = reg('grn'), any = false;
     (d.grns || []).forEach(function (g) {
-      if (!g || !g.id || R[g.id] || g.status !== 'Received') return;
+      if (!g || g._bk || !g.id || R[g.id] || g.status !== 'Received') return;
       var items = (g.items || []).filter(function (i) { return i && Number(i.qtyReceived) > 0; }).map(function (i) { return { name: i.desc || 'Item', qty: Number(i.qtyReceived) || 0, billed: Number(i.qtyBilled) || 0 }; });
       if (!items.length) return;
       out.inbox.push({
@@ -535,7 +640,7 @@
     return any;
   }
 
-  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
+  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks', 'bills', 'operationalCosts', 'grns', 'billPayments'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
 
   async function sync(force) {
     if (busy) return; var u = user(); APP = detect();
