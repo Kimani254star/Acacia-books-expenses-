@@ -29,6 +29,9 @@
     return d;
   }
   function save() { if (typeof saveDB === 'function') saveDB(); }
+  /* a template that came from Books is owned by Books: it makes the bills (they arrive as bills), so Expenses never runs, edits or deletes it */
+  function fromBooks(r) { return !!(r && r._bk); }
+  function lockedMsg() { toast('This recurring bill comes from Books. Change it in Books and it will update here.'); }
   function sent(b) { var d = D(); return !!(d && d._bkReg && d._bkReg.bill && d._bkReg.bill[b.id]); }
   function addDays(iso, n) { var t = new Date(iso + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
   function addMonths(iso, n, anchor) {
@@ -55,7 +58,7 @@
   function normItems(items) {
     return (items || []).map(function (it) {
       var c = calcItem(it);
-      return { desc: String(it.desc || '').trim(), qty: num(it.qty), price: num(it.price), taxRate: String(it.taxRate == null ? '16' : it.taxRate), subtotal: c.subtotal, vat: c.vat, type: 'service' };
+      return { desc: String(it.desc || '').trim(), qty: num(it.qty), price: num(it.price), taxRate: String(it.taxRate == null ? '16' : it.taxRate), subtotal: c.subtotal, vat: c.vat, type: it.type === 'product' ? 'product' : 'service' };
     }).filter(function (it) { return it.desc && it.qty > 0 && it.price >= 0; });
   }
   function totals(items) { var s = 0, v = 0; items.forEach(function (it) { s += it.subtotal; v += it.vat; }); return { subtotal: r2(s), vat: r2(v) }; }
@@ -300,6 +303,7 @@
   };
   w.acxRecForm = function (id) {
     var d = D(), r = id ? d.recurringBills.find(function (x) { return x.id === id; }) : null; if (id && !r) return;
+    if (fromBooks(r)) return lockedMsg();
     modal('billModal', '<h3 style="margin:0 0 12px">' + (r ? 'Edit Recurring Bill ' + esc(r.number) : 'New Recurring Bill') + '</h3>' +
       '<div class="form-grid">' +
       '<div class="field"><label>Supplier</label><select id="bm_sup"><option value="">Select supplier...</option>' + supplierOptions(r && r.supplierId) + '</select></div>' +
@@ -323,6 +327,7 @@
     var sup = d.suppliers.find(function (s) { return s.id === o.supplierId; }); o.supplierName = sup ? sup.name : '';
     if (id) {
       var r = d.recurringBills.find(function (x) { return x.id === id; }); if (!r) return;
+      if (fromBooks(r)) return lockedMsg();
       var startChanged = r.date !== o.date || r.recurrenceType !== o.recurrenceType;
       Object.assign(r, o);
       if (startChanged && !(r.generated > 0)) r.nextDate = o.date;
@@ -335,24 +340,26 @@
   };
   w.acxRecClone = function (id) {
     var d = D(), r = d.recurringBills.find(function (x) { return x.id === id; }); if (!r) return;
-    var n = JSON.parse(JSON.stringify(r)); n.id = 'rec_' + Date.now(); n.number = 'REC-' + pad(d.nextRecNo++); n.date = today(); n.nextDate = today(); n.generated = 0; n.lastGenerated = ''; n.status = 'Paused';
+    var n = JSON.parse(JSON.stringify(r)); delete n._bk; delete n.source; n.id = 'rec_' + Date.now(); n.number = 'REC-' + pad(d.nextRecNo++); n.date = today(); n.nextDate = today(); n.generated = 0; n.lastGenerated = ''; n.status = 'Paused';
     d.recurringBills.push(n); save(); refreshAll(); toast('Cloned as ' + n.number + ' (paused until you resume it)');
   };
   w.acxRecDelete = function (id) {
     var d = D(), r = d.recurringBills.find(function (x) { return x.id === id; }); if (!r) return;
+    if (fromBooks(r)) return lockedMsg();
     if (!confirm('Delete recurring bill ' + r.number + '? Bills it already created stay.')) return;
     d.recurringBills = d.recurringBills.filter(function (x) { return x.id !== id; }); save(); refreshAll(); toast('Template deleted');
   };
   w.acxRecToggle = function (id) {
     var d = D(), r = d.recurringBills.find(function (x) { return x.id === id; }); if (!r || r.status === 'Completed') return;
+    if (fromBooks(r)) return lockedMsg();
     r.status = r.status === 'Active' ? 'Paused' : 'Active'; save(); if (r.status === 'Active') runRecurring(); closeModal('billModal'); refreshAll();
   };
   w.acxRecView = function (id) {
     var d = D(), r = d.recurringBills.find(function (x) { return x.id === id; }); if (!r) return;
     var made = d.bills.filter(function (b) { return b.recurringId === r.id; }).sort(function (a, b) { return String(b.date).localeCompare(a.date); });
-    modal('billModal', '<h3 style="margin:0 0 4px">' + esc(r.number) + ' · ' + esc(r.supplierName) + '</h3><div style="color:var(--ink-soft);margin-bottom:10px">' + esc(r.description || '') + ' · next ' + (r.nextDate ? fmtDate(r.nextDate) : '—') + ' · ' + r.status + '</div>' +
+    modal('billModal', '<h3 style="margin:0 0 4px">' + esc(r.number) + ' · ' + esc(r.supplierName) + '</h3><div style="color:var(--ink-soft);margin-bottom:10px">' + esc(r.description || '') + ' · next ' + (r.nextDate ? fmtDate(r.nextDate) : '—') + ' · ' + r.status + (fromBooks(r) ? ' · managed in Books' : '') + '</div>' +
       '<b>Bills created (' + made.length + ')</b>' + (made.map(function (b) { return '<div style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--line-soft)">' + fmtDate(b.date) + ' · ' + esc(b.billNo) + ' · ' + money(b.total) + ' · ' + status(b) + '</div>'; }).join('') || '<div style="font-size:13px;color:var(--ink-soft)">None yet.</div>') +
-      '<div style="margin-top:14px;display:flex;gap:8px"><span style="flex:1"></span><button class="btn" onclick="closeModal_acx(\'billModal\')">Close</button>' + (r.status !== 'Completed' ? '<button class="btn" onclick="acxRecToggle(\'' + r.id + '\')">' + (r.status === 'Active' ? 'Pause' : 'Resume') + '</button><button class="btn btn-primary" onclick="acxRecRunNow(\'' + r.id + '\')">Create due bills now</button>' : '') + '</div>');
+      '<div style="margin-top:14px;display:flex;gap:8px"><span style="flex:1"></span><button class="btn" onclick="closeModal_acx(\'billModal\')">Close</button>' + (r.status !== 'Completed' && !fromBooks(r) ? '<button class="btn" onclick="acxRecToggle(\'' + r.id + '\')">' + (r.status === 'Active' ? 'Pause' : 'Resume') + '</button><button class="btn btn-primary" onclick="acxRecRunNow(\'' + r.id + '\')">Create due bills now</button>' : '') + '</div>');
   };
   w.acxRecRunNow = function (id) { var n = runRecurring(id); closeModal('billModal'); refreshAll(); toast(n ? n + ' bill' + (n === 1 ? '' : 's') + ' created' : 'Nothing is due yet'); };
 
@@ -360,7 +367,7 @@
   function runRecurring(onlyId) {
     var d = D(); if (!d) return 0; var made = 0, upto = today();
     d.recurringBills.forEach(function (r) {
-      if (r.status !== 'Active' || (onlyId && r.id !== onlyId)) return;
+      if (fromBooks(r) || r.status !== 'Active' || (onlyId && r.id !== onlyId)) return;
       var nd = r.nextDate, guard = 0, anchor = parseInt(String(r.date || '').split('-')[2], 10) || undefined;
       while (nd && nd <= upto && (!r.endDate || nd <= r.endDate) && guard < 24) {
         guard++;
@@ -373,7 +380,7 @@
       }
       if (!nd || (r.endDate && nd > r.endDate)) { r.nextDate = ''; r.status = 'Completed'; } else r.nextDate = nd;
     });
-    if (made || d.recurringBills.some(function (r) { return r.status === 'Completed' && r.nextDate === ''; })) save();
+    if (made || d.recurringBills.some(function (r) { return !fromBooks(r) && r.status === 'Completed' && r.nextDate === ''; })) save();
     return made;
   }
   w.acxRunRecurring = runRecurring;

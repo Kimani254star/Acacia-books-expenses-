@@ -57,15 +57,17 @@
    * Books stays the owner of these records; Expenses holds a mirror. Each mirror keeps _bk = { k: Books id, h: fingerprint }, so it is
    * updated when Books changes it, removed when Books deletes it, and is NEVER sent back to Books (it is also marked in _bkReg).
    * Anything that started in Expenses (acxSrcApp === 'Expenses' in Books) is skipped, so nothing is counted twice.
-   * Needs acacia_books_to_expenses.sql run once in Supabase (lets acx_books_read return these four keys). */
+   * Needs acacia_books_to_expenses.sql run once in Supabase (lets acx_books_read return bills, bulkBills, recurringBills, operationalCosts, grns and billPayments).
+   * Bulk bills and the bills Books makes from recurring templates arrive as bills (source 'bulk' / 'recurring'); Books' recurring templates arrive as read-only
+   * templates (db.recurringBills, marked _bk) that Expenses never runs itself, so a bill is never made twice. */
   var IMPORT_FROM = '';          /* optional: 'YYYY-MM-DD'. Only Books records dated on/after this day are mirrored. '' = everything. */
   var IMP = { msg: '' };
   function parseRow(rows, k) { try { var v = rows[k] && JSON.parse(rows[k].value); if (typeof v === 'string') v = JSON.parse(v); return Array.isArray(v) ? v : null; } catch (e) { return null; } }
   function importFromBooks(rows) {
-    var d = db(), changed = false, N = { b: 0, c: 0, g: 0 }, cnt = { b: 0, c: 0, g: 0 };
-    var bills = parseRow(rows, 'bills'), costs = parseRow(rows, 'operationalCosts'), grns = parseRow(rows, 'grns'), pays = parseRow(rows, 'billPayments') || [];
-    d.bills = d.bills || []; d.expenses = d.expenses || []; d.grns = d.grns || [];
-    if (!bills && !costs && !grns) { IMP.msg = 'No Books bills, operational costs or GRNs were returned. If Books has some, run acacia_books_to_expenses.sql in Supabase, then press Sync now.'; return false; }
+    var d = db(), changed = false, N = { b: 0, r: 0, c: 0, g: 0 }, cnt = { b: 0, c: 0, g: 0 };
+    var bills = parseRow(rows, 'bills'), bulk = parseRow(rows, 'bulkBills'), recs = parseRow(rows, 'recurringBills'), costs = parseRow(rows, 'operationalCosts'), grns = parseRow(rows, 'grns'), pays = parseRow(rows, 'billPayments') || [];
+    d.bills = d.bills || []; d.recurringBills = d.recurringBills || []; d.expenses = d.expenses || []; d.grns = d.grns || [];
+    if (!bills && !bulk && !recs && !costs && !grns) { IMP.msg = 'No Books bills, bulk bills, recurring bills, operational costs or GRNs were returned. If Books has some, run acacia_books_to_expenses.sql in Supabase, then press Sync now.'; return false; }
     var supId = function (n) { var s = (d.suppliers || []).filter(function (x) { return low(x.name) === low(n); })[0]; return s ? s.id : null; };
     var fromHere = function (x) { return x && x.acxSrcApp === 'Expenses'; };
     var tooOld = function (dt) { return !!(IMPORT_FROM && String(dt || '').slice(0, 10) < IMPORT_FROM); };
@@ -96,28 +98,64 @@
       return ch;
     }
 
-    /* 1. bills (+ their payments from Books) */
+    /* line items keep their product / service type (Books stores it on every bill line; older lines have none, so a stock item = product) */
+    function mapItems(list) {
+      return (list || []).map(function (i) {
+        var q = Number(i.qty != null ? i.qty : i.quantity) || 0, pr = Number(i.price != null ? i.price : i.rate) || 0, ty = low(i.type);
+        if (ty !== 'product' && ty !== 'service') ty = (i.sku || i.warehouse || i.productId || i.itemId) ? 'product' : 'service';
+        var o = { desc: String(i.desc || i.description || i.name || 'Item'), qty: q, price: pr, taxRate: String(i.taxRate != null ? i.taxRate : (i.vatRate != null ? i.vatRate : '16')), subtotal: r2(i.subtotal != null ? i.subtotal : q * pr), vat: r2(i.vat), type: ty };
+        if (i.sku) o.sku = String(i.sku);
+        if (i.warehouse) o.warehouse = String(i.warehouse);
+        if (Number(i.discount)) o.discount = Number(i.discount);
+        return o;
+      });
+    }
+    var recIdOf = function (bookId) { return 'rec_bk' + hx('t:' + bookId).slice(0, 10); };   /* same id the template mirror below gives the template */
+
+    /* 1a. Books' recurring templates -> read-only templates here (Books makes the bills; they arrive in step 1b) */
+    var cr = { n: 0 };
+    if (mirror(d.recurringBills, recs, 'rec_bk', 'rec',
+      function (t) { return t.id ? 't:' + t.id : (t.number ? 't:' + t.number : ''); },
+      function (t) {
+        return {
+          number: String(t.number || ''), supplierId: supId(t.supplier), supplierName: t.supplier || '', category: t.chartOfAccount || t.account || '',
+          description: t.description || t.notes || '', date: String(t.date || today()).slice(0, 10), recurrenceType: t.recurrenceType || 'monthly', recurrenceDays: t.recurrenceDays || '',
+          endDate: t.endDate || '', nextDate: t.nextDate || '', status: t.status || 'Active', termDays: Number(t.termDays) || 0, currency: t.currency || 'KES', currencyRate: Number(t.currencyRate) || 1,
+          items: mapItems(t.items), generated: Number(t.generated) || 0, lastGenerated: t.lastGenerated || '', source: 'books'
+        };
+      }, null, cr)) changed = true;
+    N.r = cr.n;
+
+    /* 1b. bills (+ their payments from Books). Bulk bills are also pushed into Books' "bills" list; any that are only in "bulkBills" are added here.
+     * Only when "bills" itself came back, so a partial answer never removes bills that are already mirrored. */
+    var merged = null;
+    if (bills) {
+      merged = bills.slice();
+      var have = {}; merged.forEach(function (x) { if (x) have[low(x.billNumber) + '|' + low(x.supplier)] = 1; });
+      (bulk || []).forEach(function (x) { if (!x) return; var k = low(x.billNumber) + '|' + low(x.supplier); if (have[k]) return; have[k] = 1; merged.push(Object.assign({}, x, { source: 'bulk' })); });
+    }
     var cb = { n: 0 };
-    if (mirror(d.bills, bills, 'bill_bk', 'bill',
+    if (mirror(d.bills, merged, 'bill_bk', 'bill',
       function (b) { return b.id ? 'b:' + b.id : (b.billNumber ? 'n:' + b.billNumber + '|' + low(b.supplier) : ''); },
       function (b) {
         var no = String(b.billNumber || ''), mine = pays.filter(function (p) { return p && String(p.billNumber) === no && (!p.supplier || !b.supplier || low(p.supplier) === low(b.supplier)); });
-        var items = (b.items || []).map(function (i) {
-          var q = Number(i.qty) || 0, pr = Number(i.price != null ? i.price : i.rate) || 0;
-          return { desc: String(i.desc || i.description || i.name || 'Item'), qty: q, price: pr, taxRate: String(i.taxRate != null ? i.taxRate : (i.vatRate != null ? i.vatRate : '16')), subtotal: r2(i.subtotal != null ? i.subtotal : q * pr), vat: r2(i.vat), type: 'service' };
-        });
+        var items = mapItems(b.items);
         var sub = b.subtotal != null ? r2(b.subtotal) : r2(items.reduce(function (s, i) { return s + i.subtotal; }, 0)), vat = b.vat != null ? r2(b.vat) : r2(items.reduce(function (s, i) { return s + i.vat; }, 0));
         var total = b.total != null ? r2(b.total) : r2(sub + vat), term = Number(b.termDays) || 0, dt = String(b.date || today()).slice(0, 10), due = b.due || dt;
-        return {
+        var fromRec = b.source === 'recurring' && b.recurringId, src = fromRec ? 'recurring' : (b.source === 'bulk' ? 'bulk' : 'books');
+        var rec = {
           billNo: no, date: dt, termDays: term, due: due, supplierId: supId(b.supplier), supplierName: b.supplier || '', category: b.chartOfAccount || b.account || '',
           description: b.description || b.notes || '', reference: b.lpo || '', notes: '', currency: b.currency || 'KES', currencyRate: Number(b.currencyRate) || 1,
-          items: items, subtotal: sub, vat: vat, total: total, paidAmount: r2(Math.max(Number(b.paidAmount) || 0, sumPay(mine))),
-          payments: mine.map(function (p) { return { id: 'bkpay_' + hx(String(p.id == null ? p.date + p.amount : p.id)).slice(0, 8), date: String(p.date || dt).slice(0, 10), amount: r2(p.amount), bank: p.bank || '', method: p.mode || 'Bank Transfer' }; }),
-          source: 'books'
+          items: items, subtotal: sub, vat: vat, total: total, paidAmount: r2(Math.max(Number(b.paidAmount) || 0, Number(b.amountPaid) || 0, sumPay(mine))),
+          payments: mine.map(function (p) { return { id: 'bkpay_' + hx(String(p.id == null ? p.date + p.amount : p.id)).slice(0, 8), date: String(p.date || dt).slice(0, 10), amount: r2(p.amount), bank: p.bank || '', method: p.mode || p.method || 'Bank Transfer' }; }),
+          source: src
         };
+        if (fromRec) { rec.recurringId = recIdOf(b.recurringId); rec.recurringNumber = String(b.recurringNumber || ''); rec.recurringRun = String(b.recurringRun || dt).slice(0, 10); }
+        return rec;
       }, null, cb)) changed = true;
     N.b = cb.n;
     d.bills.forEach(function (b) { if (b && b._bk) (b.payments || []).forEach(function (p) { if (p && p.id) reg('bpay')[p.id] = 1; }); });
+    var nBulk = d.bills.filter(function (b) { return b && b._bk && b.source === 'bulk'; }).length, nRec = d.bills.filter(function (b) { return b && b._bk && b.source === 'recurring'; }).length;
 
     /* 2. operational costs -> Expenses records (always Paid: in Books a cost has already left a bank / current account) */
     var cc = { n: 0 };
@@ -152,7 +190,7 @@
       }, null, cg)) changed = true;
     N.g = cg.n;
 
-    IMP.msg = 'From Books: ' + N.b + ' bill' + (N.b === 1 ? '' : 's') + ', ' + N.c + ' operational cost' + (N.c === 1 ? '' : 's') + ', ' + N.g + ' GRN' + (N.g === 1 ? '' : 's') + (IMPORT_FROM ? ' (dated ' + IMPORT_FROM + ' or later)' : '') + ' kept in step.';
+    IMP.msg = 'From Books: ' + N.b + ' bill' + (N.b === 1 ? '' : 's') + ' (' + nBulk + ' bulk, ' + nRec + ' from recurring), ' + N.r + ' recurring template' + (N.r === 1 ? '' : 's') + ', ' + N.c + ' operational cost' + (N.c === 1 ? '' : 's') + ', ' + N.g + ' GRN' + (N.g === 1 ? '' : 's') + (IMPORT_FROM ? ' (dated ' + IMPORT_FROM + ' or later)' : '') + ' kept in step.';
     return changed;
   }
 
@@ -583,7 +621,7 @@
         id: 'bill-' + b.id, type: 'bill', status: 'pending', app: 'Expenses', billId: b.id, kind: b.source || 'bill', billNo: b.billNo,
         date: b.date, supplier: b.supplierName || '', chartOfAccount: b.category || '', termDays: Number(b.termDays) || 0, lpo: b.reference || '',
         currency: b.currency || 'KES', currencyRate: Number(b.currencyRate) || 1, description: b.description || '',
-        items: (b.items || []).map(function (i) { return { desc: i.desc, qty: Number(i.qty) || 0, price: Number(i.price) || 0, taxRate: String(i.taxRate), subtotal: r2(i.subtotal), vat: r2(i.vat), type: 'service' }; }),
+        items: (b.items || []).map(function (i) { return { desc: i.desc, qty: Number(i.qty) || 0, price: Number(i.price) || 0, taxRate: String(i.taxRate), subtotal: r2(i.subtotal), vat: r2(i.vat), type: i.type === 'product' ? 'product' : 'service' }; }),
         subtotal: r2(b.subtotal), vat: r2(b.vat), total: r2(b.total),
         recurringId: b.recurringId || '', recurringNumber: b.recurringNumber || '', recurringRun: b.recurringRun || '', createdAt: new Date().toISOString()
       });
@@ -640,7 +678,7 @@
     return any;
   }
 
-  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks', 'bills', 'operationalCosts', 'grns', 'billPayments'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
+  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks', 'bills', 'bulkBills', 'recurringBills', 'operationalCosts', 'grns', 'billPayments'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
 
   async function sync(force) {
     if (busy) return; var u = user(); APP = detect();
