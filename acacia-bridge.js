@@ -61,7 +61,7 @@
    * Bulk bills and the bills Books makes from recurring templates arrive as bills (source 'bulk' / 'recurring'); Books' recurring templates arrive as read-only
    * templates (db.recurringBills, marked _bk) that Expenses never runs itself, so a bill is never made twice. */
   var IMPORT_FROM = '';          /* optional: 'YYYY-MM-DD'. Only Books records dated on/after this day are mirrored. '' = everything. */
-  var IMP = { msg: '' };
+  var IMP = { msg: '', prod: '' };
   function parseRow(rows, k) { try { var v = rows[k] && JSON.parse(rows[k].value); if (typeof v === 'string') v = JSON.parse(v); return Array.isArray(v) ? v : null; } catch (e) { return null; } }
   function importFromBooks(rows) {
     var d = db(), changed = false, N = { b: 0, r: 0, c: 0, g: 0 }, cnt = { b: 0, c: 0, g: 0 };
@@ -194,6 +194,43 @@
     return changed;
   }
 
+  /* Books keeps stock per warehouse (inventory_<warehouse>). Join them into one "inventory" list, each item tagged with its warehouse. */
+  function combineInventory(rows) {
+    var all = [], got = false;
+    function take(arr, wh) { arr.forEach(function (x) { if (x && typeof x === 'object') { if (!x.warehouse && wh) x.warehouse = wh; all.push(x); } }); got = true; }
+    try { var a0 = parseRow(rows, 'inventory'); if (a0) take(a0, ''); } catch (e) {}
+    Object.keys(rows).forEach(function (k) {
+      if (k.indexOf('inventory_') !== 0) return;
+      try { var a = parseRow(rows, k); if (a) take(a, k.slice(10)); } catch (e) {}
+    });
+    if (got) rows.inventory = { key: 'inventory', value: JSON.stringify(all), updated_at: null };
+  }
+  /* Expenses: Books stock items become pickable products on bill lines (cost price + purchase VAT come from Books). */
+  function vatKey(v) {
+    if (v == null || v === '') return null;
+    var t = String(v).trim().toLowerCase().replace('%', '');
+    return t === '16' ? '16' : t === '8' ? '8' : (t === '0' || /^zero/.test(t)) ? '0' : /^exempt/.test(t) ? 'exempt' : null;
+  }
+  function importProducts(rows) {
+    var d = db(), inv = parseRow(rows, 'inventory');
+    if (!inv) { IMP.prod = 'Products: Books returned no stock list. Run acacia_fix_suppliers_products.sql in Supabase, then press Sync now.'; return false; }
+    var agg = {}, order = [];
+    inv.forEach(function (x) {
+      if (!x || !x.name) return;
+      var sku = String(x.sku || x.code || x.itemCode || ''), key = low(sku || x.name), a = agg[key];
+      if (!a) { a = agg[key] = { name: String(x.name), sku: sku, qty: 0, price: 0, vat: '16', unit: String(x.unit || x.uom || ''), wh: [] }; order.push(key); }
+      a.qty += parseFloat(x.qty) || 0;
+      var pr = Number(x.buyPrice != null ? x.buyPrice : (x.costPrice != null ? x.costPrice : (x.unitCost != null ? x.unitCost : x.cost))) || 0; if (pr && !a.price) a.price = r2(pr);
+      var vk = vatKey(x.buyVat != null ? x.buyVat : x.buyVAT); if (vk != null) a.vat = vk;
+      if (x.warehouse && a.wh.indexOf(x.warehouse) < 0) a.wh.push(String(x.warehouse));
+    });
+    var list = order.map(function (k) { var a = agg[k]; return { name: a.name, sku: a.sku, price: a.price, vat: a.vat, unit: a.unit, qty: r2(a.qty), wh: a.wh.join(', ') }; })
+      .sort(function (p, q) { return p.name.toLowerCase() < q.name.toLowerCase() ? -1 : 1; });
+    IMP.prod = list.length + ' product' + (list.length === 1 ? '' : 's') + ' from Books stock are available on bill lines.';
+    if (h(list) !== d._bkProd) { d.booksProducts = list; d._bkProd = h(list); return true; }
+    return false;
+  }
+
   /* ---------------- adapters ---------------- */
   var A = {
     sell: {
@@ -258,7 +295,7 @@
             if (!a) { a = agg[key] = { name: String(x.name), sku: sku, qty: 0, price: 0, vat: 16, unit: String(x.unit || x.uom || 'piece'), reorder: 0 }; order.push(key); }
             a.qty += parseFloat(x.qty) || 0;
             var pr = Number(x.sellingPrice || x.sellPrice || x.price || 0) || 0; if (pr && !a.price) a.price = pr;
-            var vr = x.sellVAT != null ? x.sellVAT : (x.vat != null ? x.vat : (x.vatRate != null ? x.vatRate : x.taxRate));
+            var vr = x.sellVat != null ? x.sellVat : (x.sellVAT != null ? x.sellVAT : (x.vat != null ? x.vat : (x.vatRate != null ? x.vatRate : x.taxRate)));
             if (vr != null && vr !== '') { var vs = String(vr); if (/exempt|zero/i.test(vs)) a.vat = 0; else { var m = vs.match(/\d+(\.\d+)?/); if (m) a.vat = Number(m[0]); } }
             var rl = Number(x.reorderLevel || x.reorder || 0) || 0; if (rl && !a.reorder) a.reorder = rl;
           });
@@ -343,6 +380,7 @@
       afterRead: function (rows) {
         var d = db(), changed = false;
         try { if (importFromBooks(rows)) changed = true; } catch (e) { console.warn('[acacia-bridge] books import', e); IMP.msg = 'Books bills, costs and GRNs could not be imported: ' + String((e && e.message) || e); }
+        try { if (importProducts(rows)) changed = true; } catch (e) { console.warn('[acacia-bridge] products', e); IMP.prod = 'Books products could not be read: ' + String((e && e.message) || e); }
         var arr = function (k) { try { var v = rows[k] && JSON.parse(rows[k].value); if (typeof v === 'string') v = JSON.parse(v); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
         var coa = arr('chartOfAccounts'), banks = arr('banks'), nAcc = 0;
         if (coa) {
@@ -379,7 +417,7 @@
             if (sel && sel.options) { banks.forEach(function (b) { var n = b && (b.name || b.bankName || b.accountName); if (!n) return; var has = Array.prototype.some.call(sel.options, function (o) { return low(o.value || o.text) === low(n); }); if (!has) { var o = document.createElement('option'); o.value = o.textContent = n; sel.appendChild(o); } }); }
           } catch (e) {}
         }
-        ST.extra = (coa ? (nAcc ? nAcc + ' expense accounts come from the Books chart of accounts.' : 'Books has no expense accounts yet, so the built-in categories are being used.') : '') + (IMP.msg ? ' ' + IMP.msg : '');
+        ST.extra = (coa ? (nAcc ? nAcc + ' expense accounts come from the Books chart of accounts.' : 'Books has no expense accounts yet, so the built-in categories are being used.') : '') + (IMP.msg ? ' ' + IMP.msg : '') + (IMP.prod ? ' ' + IMP.prod : '');
         return changed;
       },
       save: function () { saveDB(); },
@@ -490,10 +528,25 @@
   function bookId(appId, isInv) { return isInv ? numIdOf(APP + ':' + appId) : uuidOf(APP + ':' + appId); }
   function removeFrom(list, rec) { var i = list.indexOf(rec); if (i > -1) list.splice(i, 1); }
 
+  /* Books saves suppliers WITHOUT an "id" (customers have one), so every supplier was skipped. Give each id-less supplier a stable id made from its
+   * name - the same rule as Books' acacia-supplier-ids.js - so both sides agree on it. Dupes of one name get -2, -3 ... in list order. */
+  function supplierIds(arr) {
+    var used = {}, i, x;
+    for (i = 0; i < arr.length; i++) { x = arr[i]; if (x && x.id != null && x.id !== '') used[String(x.id)] = 1; }
+    for (i = 0; i < arr.length; i++) {
+      x = arr[i]; if (!x || (x.id != null && x.id !== '') || !String(x.name || '').trim()) continue;
+      var base = 'bks-' + hx(low(x.name)).slice(0, 10), id = base, n = 1;
+      while (used[id]) { n++; id = base + '-' + n; }
+      used[id] = 1; x.id = id;
+    }
+    return arr;
+  }
+
   async function pass(company, K, vw, rows, key, isInv, inbox, out) {
     var changed = false, pushes = [], deletes = [], later = [], row = rows[key], bArr = [], R = reg(key);
     var have = !!row;                                        /* no row = Books has none yet (nothing may be removed from the app then) */
     if (row) { try { var p = JSON.parse(row.value); if (typeof p === 'string') p = JSON.parse(p); if (!Array.isArray(p)) return false; bArr = p; } catch (e) { return false; } }
+    if (key === 'suppliers') bArr = supplierIds(bArr);
     var byId = {}, taken = {}; bArr.forEach(function (b) { if (b && b.id != null) { byId[String(b.id)] = b; if (b.invoiceNumber) taken[String(b.invoiceNumber)] = 1; } });
     var recs = K.list(), linked = {};
     recs.forEach(function (r) { if (r._bk) { linked[String(r._bk.id)] = r; if (!R[String(r._bk.id)]) R[String(r._bk.id)] = { a: r.id, m: 0, t: 0 }; else { R[String(r._bk.id)].a = r.id; R[String(r._bk.id)].m = 0; } } });
@@ -621,7 +674,7 @@
         id: 'bill-' + b.id, type: 'bill', status: 'pending', app: 'Expenses', billId: b.id, kind: b.source || 'bill', billNo: b.billNo,
         date: b.date, supplier: b.supplierName || '', chartOfAccount: b.category || '', termDays: Number(b.termDays) || 0, lpo: b.reference || '',
         currency: b.currency || 'KES', currencyRate: Number(b.currencyRate) || 1, description: b.description || '',
-        items: (b.items || []).map(function (i) { return { desc: i.desc, qty: Number(i.qty) || 0, price: Number(i.price) || 0, taxRate: String(i.taxRate), subtotal: r2(i.subtotal), vat: r2(i.vat), type: i.type === 'product' ? 'product' : 'service' }; }),
+        items: (b.items || []).map(function (i) { return { desc: i.desc, qty: Number(i.qty) || 0, price: Number(i.price) || 0, taxRate: String(i.taxRate), subtotal: r2(i.subtotal), vat: r2(i.vat), type: i.type === 'product' ? 'product' : 'service', sku: i.sku || '' }; }),
         subtotal: r2(b.subtotal), vat: r2(b.vat), total: r2(b.total),
         recurringId: b.recurringId || '', recurringNumber: b.recurringNumber || '', recurringRun: b.recurringRun || '', createdAt: new Date().toISOString()
       });
@@ -678,7 +731,7 @@
     return any;
   }
 
-  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('chartOfAccounts', 'banks', 'bills', 'bulkBills', 'recurringBills', 'operationalCosts', 'grns', 'billPayments'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
+  function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('inventory', 'chartOfAccounts', 'banks', 'bills', 'bulkBills', 'recurringBills', 'operationalCosts', 'grns', 'billPayments'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
 
   async function sync(force) {
     if (busy) return; var u = user(); APP = detect();
@@ -689,6 +742,7 @@
     try {
       var rows = {}, res = await w.AcaciaCloud.rpc('acx_books_read', { p_company: u.companyId, p_keys: readKeys() });
       (res || []).forEach(function (r) { rows[r.key] = r; });
+      combineInventory(rows);
       if (APP === 'projects' && rows.projects) {
         try { var pj = JSON.parse(rows.projects.value); if (typeof pj === 'string') pj = JSON.parse(pj);
           if (Array.isArray(pj) && pj.some(function (x) { return x && x.id == null; })) {

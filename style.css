@@ -55,7 +55,8 @@ input,select,textarea{font-family:inherit;}
 .user-menu-item{padding:9px 14px;font-size:13px;cursor:pointer;}
 .user-menu-item:hover{background:var(--paper);}
 
-.sidebar{background:var(--green-deep);color:#EDE9DC;padding:22px 0 20px;display:flex;flex-direction:column;}
+.sidebar{background:var(--green-deep);color:#EDE9DC;padding:22px 0 20px;display:flex;flex-direction:column;position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;}
+.sidebar::-webkit-scrollbar{width:6px;}.sidebar::-webkit-scrollbar-thumb{background:rgba(237,233,220,.25);border-radius:3px;}
 .brand{padding:0 22px 20px;border-bottom:1px solid rgba(237,233,220,.14);margin-bottom:16px;}
 .brand-mark{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.2px;color:#fff;}
 .brand-sub{font-size:12px;color:#C7C2AF;margin-top:2px;}

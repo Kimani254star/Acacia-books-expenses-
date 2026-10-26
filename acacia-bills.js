@@ -58,7 +58,9 @@
   function normItems(items) {
     return (items || []).map(function (it) {
       var c = calcItem(it);
-      return { desc: String(it.desc || '').trim(), qty: num(it.qty), price: num(it.price), taxRate: String(it.taxRate == null ? '16' : it.taxRate), subtotal: c.subtotal, vat: c.vat, type: it.type === 'product' ? 'product' : 'service' };
+      var o = { desc: String(it.desc || '').trim(), qty: num(it.qty), price: num(it.price), taxRate: String(it.taxRate == null ? '16' : it.taxRate), subtotal: c.subtotal, vat: c.vat, type: it.type === 'product' ? 'product' : 'service' };
+      if (it.sku) o.sku = String(it.sku);
+      return o;
     }).filter(function (it) { return it.desc && it.qty > 0 && it.price >= 0; });
   }
   function totals(items) { var s = 0, v = 0; items.forEach(function (it) { s += it.subtotal; v += it.vat; }); return { subtotal: r2(s), vat: r2(v) }; }
@@ -121,9 +123,21 @@
   function currencyOptions(sel) { return ['KES', 'USD', 'EUR', 'GBP', 'UGX', 'TZS'].map(function (c) { return '<option' + (sel === c ? ' selected' : '') + '>' + c + '</option>'; }).join(''); }
   var inp = 'style="width:100%"';
 
+  /* Products come from the Books stock list (db.booksProducts, filled by acacia-bridge.js). Typing or picking one fills price + VAT. */
+  function products() { var d = D(); return (d && d.booksProducts) || []; }
+  function findProduct(v) {
+    v = String(v || '').trim().toLowerCase(); if (!v) return null;
+    var l = products();
+    return l.filter(function (p) { return p.name.toLowerCase() === v; })[0] || l.filter(function (p) { return p.sku && p.sku.toLowerCase() === v; })[0] || null;
+  }
+  function productList() {
+    return '<datalist id="acxBillProducts">' + products().map(function (p) {
+      return '<option value="' + esc(p.name) + '">' + esc((p.sku ? p.sku + ' · ' : '') + 'cost ' + money(p.price) + ' · stock ' + p.qty) + '</option>';
+    }).join('') + '</datalist>';
+  }
   function itemRow(it) {
     it = it || { desc: '', qty: 1, price: '', taxRate: '16' };
-    return '<tr><td><input class="bi-desc" ' + inp + ' value="' + esc(it.desc) + '" placeholder="Description"></td>' +
+    return '<tr data-type="' + (it.type === 'product' ? 'product' : 'service') + '" data-sku="' + esc(it.sku || '') + '"><td><input class="bi-desc" list="acxBillProducts" ' + inp + ' value="' + esc(it.desc) + '" placeholder="Description, or pick a Books product" autocomplete="off"></td>' +
       '<td><input type="number" min="0" step="any" class="bi-qty" style="width:80px" value="' + esc(it.qty) + '"></td>' +
       '<td><input type="number" min="0" step="any" class="bi-price" style="width:110px" value="' + esc(it.price) + '"></td>' +
       '<td><select class="bi-vat">' + vatOptions(it.taxRate) + '</select></td>' +
@@ -131,13 +145,15 @@
       '<td><button type="button" class="btn btn-sm" onclick="this.closest(\'tr\').remove();acxBillTotals()">✕</button></td></tr>';
   }
   function itemsTable(items) {
-    return '<table style="width:100%"><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>VAT</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody id="biBody">' +
+    var np = products().length;
+    return productList() + '<div class="sub" style="margin-bottom:6px">' + (np ? np + ' product' + (np === 1 ? '' : 's') + ' from Books stock: start typing a name or SKU in Description to pick one (fills cost price and VAT). Any other text is saved as a service line.' : 'No Books products yet. Add stock in Books (Inventory) and press Sync now in the Books sync pill; until then type the description yourself.') + '</div>' +
+      '<table style="width:100%"><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>VAT</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody id="biBody">' +
       (items && items.length ? items : [null]).map(itemRow).join('') + '</tbody></table>' +
       '<div style="margin-top:8px;display:flex;gap:8px;align-items:center"><button type="button" class="btn btn-sm" onclick="acxBillAddRow()">+ Add line</button><span style="flex:1"></span><span id="biSum" style="font-weight:600"></span></div>';
   }
   function readItems() {
     return [].map.call(document.querySelectorAll('#biBody tr'), function (tr) {
-      return { desc: tr.querySelector('.bi-desc').value, qty: tr.querySelector('.bi-qty').value, price: tr.querySelector('.bi-price').value, taxRate: tr.querySelector('.bi-vat').value };
+      return { desc: tr.querySelector('.bi-desc').value, qty: tr.querySelector('.bi-qty').value, price: tr.querySelector('.bi-price').value, taxRate: tr.querySelector('.bi-vat').value, type: tr.getAttribute('data-type') === 'product' ? 'product' : 'service', sku: tr.getAttribute('data-sku') || '' };
     });
   }
   w.acxBillAddRow = function () { var t = document.createElement('tbody'); t.innerHTML = itemRow(); $('biBody').appendChild(t.firstChild); acxBillTotals(); };
@@ -149,7 +165,21 @@
     });
     var el = $('biSum'); if (el) el.textContent = 'Subtotal ' + money(s) + ' · VAT ' + money(v) + ' · Total ' + money(s + v);
   };
-  function wireItems(id) { var m = $(id); m.addEventListener('input', function (e) { if (e.target.closest('#biBody')) acxBillTotals(); }); m.addEventListener('change', function (e) { if (e.target.closest('#biBody')) acxBillTotals(); }); acxBillTotals(); }
+  function pickProduct(inputEl) {
+    var tr = inputEl.closest('tr'), p = findProduct(inputEl.value);
+    if (!tr) return;
+    if (p) {
+      tr.setAttribute('data-type', 'product'); tr.setAttribute('data-sku', p.sku || '');
+      inputEl.value = p.name;
+      var pr = tr.querySelector('.bi-price'), vt = tr.querySelector('.bi-vat');
+      if (pr && (!num(pr.value) || pr.getAttribute('data-auto') === '1')) { pr.value = p.price || ''; pr.setAttribute('data-auto', '1'); }
+      if (vt && Array.prototype.some.call(vt.options, function (o) { return o.value === String(p.vat); })) vt.value = String(p.vat);
+    } else { tr.setAttribute('data-type', 'service'); tr.setAttribute('data-sku', ''); }
+  }
+  function wireItems(id) { var m = $(id);
+    m.addEventListener('change', function (e) { if (e.target.classList && e.target.classList.contains('bi-desc')) { pickProduct(e.target); acxBillTotals(); } });
+    m.addEventListener('input', function (e) { if (e.target.classList && e.target.classList.contains('bi-price')) e.target.removeAttribute('data-auto'); });
+    m.addEventListener('input', function (e) { if (e.target.closest('#biBody')) acxBillTotals(); }); m.addEventListener('change', function (e) { if (e.target.closest('#biBody')) acxBillTotals(); }); acxBillTotals(); }
 
   /* ---------- BILLS ---------- */
   function listShell(host, title, count, rowsHtml, head, empty) {
@@ -222,7 +252,7 @@
   };
   w.acxBillView = function (id) {
     var d = D(), b = d.bills.find(function (x) { return x.id === id; }); if (!b) return;
-    var rows = b.items.map(function (it) { return '<tr><td>' + esc(it.desc) + '</td><td>' + it.qty + '</td><td class="num">' + money(it.price) + '</td><td>' + (it.taxRate === 'exempt' ? 'Exempt' : it.taxRate + '%') + '</td><td class="num">' + money(it.subtotal + it.vat) + '</td></tr>'; }).join('');
+    var rows = b.items.map(function (it) { return '<tr><td>' + esc(it.desc) + (it.sku ? ' <span class="sub">(' + esc(it.sku) + ')</span>' : '') + '</td><td>' + it.qty + '</td><td class="num">' + money(it.price) + '</td><td>' + (it.taxRate === 'exempt' ? 'Exempt' : it.taxRate + '%') + '</td><td class="num">' + money(it.subtotal + it.vat) + '</td></tr>'; }).join('');
     var pays = (b.payments || []).map(function (p) { return '<div style="font-size:13px">' + fmtDate(p.date) + ' · ' + esc(p.method || '') + (p.bank ? ' · ' + esc(p.bank) : '') + ' · <b>' + money(p.amount) + '</b></div>'; }).join('');
     var bal = r2(b.total - num(b.paidAmount));
     modal('billModal', '<h3 style="margin:0 0 4px">' + esc(b.billNo) + ' ' + payPill(b) + '</h3><div style="color:var(--ink-soft);margin-bottom:10px">' + esc(b.supplierName) + ' · ' + fmtDate(b.date) + ' · due ' + fmtDate(b.due) + ' · ' + esc(b.category) + (b.source !== 'bill' ? ' · ' + b.source : '') + '</div>' +
