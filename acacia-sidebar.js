@@ -364,5 +364,25 @@
     });
   }
 
+  /* ---------- Bell + Training (register): loads acacia-whatsnew.js from this folder and starts it for the logged-in user ---------- */
+  (function () {
+    var last = '', loading = false;
+    function start() {
+      var u = user(), lid = u && (u.email || u.username || u.loginId), cid = companyId();
+      var key = lid && cid ? String(lid).toLowerCase() + '|' + cid : '';
+      if (key === last) return; last = key;
+      var b = document.getElementById('awnBell'), p = document.getElementById('awnPanel');
+      if (!key) { if (b) b.style.display = 'none'; if (p) p.classList.remove('open'); return; }
+      if (b) b.style.display = '';
+      window.AcaciaWhatsNew.init({ loginId: lid, companyId: cid, userName: u.fullName || u.name || '', keepJoinUrl: true });
+    }
+    function tick() {
+      if (window.AcaciaWhatsNew) return start();
+      if (loading) return; loading = true; window.__awnNoAuto = true;
+      var s = document.createElement('script'); s.src = 'acacia-whatsnew.js'; s.onload = start; document.head.appendChild(s);
+    }
+    setInterval(tick, 2000);
+  })();
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
 })();
