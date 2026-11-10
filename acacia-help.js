@@ -159,20 +159,22 @@
 
   /* ---------- styles + markup ---------- */
   var css = '' +
-    '#acxhFab{position:fixed;right:16px;bottom:16px;z-index:9000;width:44px;height:44px;border-radius:50%;border:0;background:#1e3a8a;color:#fff;font:700 20px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.28);display:none}' +
-    '#acxhFab:hover{background:#1d4ed8}' +
-    '#acxhPop{position:fixed;right:16px;bottom:72px;z-index:9001;width:360px;max-width:calc(100vw - 24px);background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.28);overflow:hidden;display:none;flex-direction:column;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}' +
+    '#acxhFab{position:fixed;right:16px;bottom:16px;z-index:9000;padding:6px 14px;border-radius:9999px;border:0;background:#1e3a8a;color:#fff;font:600 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;cursor:pointer;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);display:none;transition:transform .15s,background .15s}' +
+    '#acxhFab:hover{background:#1e40af;transform:scale(1.05)}' +
+    '#acxhPop{position:fixed;right:16px;bottom:80px;z-index:9001;width:384px;max-width:calc(100vw - 24px);background:#fff;color:#0f172a;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);overflow:hidden;display:none;flex-direction:column;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}' +
     '#acxhPop.open{display:flex}' +
     '#acxhPop *{box-sizing:border-box}' +
-    '.acxh-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #e2e8f0}' +
-    '.acxh-head b{font-size:14px}.acxh-head small{display:block;color:#64748b;font-size:12px}' +
+    '.acxh-head{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#fff;border-bottom:1px solid #e5e7eb;box-shadow:0 4px 6px -1px rgba(0,0,0,.1)}' +
+    '.acxh-who{display:flex;align-items:center;gap:10px}.acxh-av{position:relative;width:32px;height:32px;border-radius:50%;background:#f3f4f6;border:1px solid #d1d5db;display:flex;align-items:center;justify-content:center;font-size:14px}' +
+    '.acxh-av i{position:absolute;right:0;bottom:0;width:10px;height:10px;background:#34d399;border:2px solid #fff;border-radius:50%}' +
+    '.acxh-head b{display:block;font-size:14px;font-weight:700;letter-spacing:.025em;line-height:1;color:#000}.acxh-head small{display:block;color:#6b7280;font-size:12px;line-height:1.2;margin-top:2px}' +
     '.acxh-x{border:0;background:none;color:#64748b;font-size:16px;cursor:pointer;width:28px;height:28px;border-radius:8px}.acxh-x:hover{background:#f1f5f9;color:#000}' +
     '.acxh-ctx{display:none;justify-content:space-between;gap:8px;background:#eff6ff;border-bottom:1px solid #dbeafe;color:#1e3a8a;padding:6px 12px;font-size:12.5px}' +
     '.acxh-ctx.show{display:flex}.acxh-ctx button{border:0;background:none;color:#1e3a8a;font-weight:600;text-decoration:underline;cursor:pointer;font-size:12.5px}' +
     '.acxh-pane{display:none;flex-direction:column}.acxh-pane.show{display:flex}' +
     '.acxh-menu{padding:12px;background:#f8fafc}.acxh-menu p{margin:0 0 8px;color:#64748b;font-size:13px}' +
     '.acxh-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}' +
-    '.acxh-card{display:flex;flex-direction:column;gap:2px;text-align:left;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px;cursor:pointer;font:inherit}' +
+    '.acxh-card{display:flex;flex-direction:column;gap:2px;text-align:left;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;cursor:pointer;font:inherit;box-shadow:0 1px 2px rgba(0,0,0,.05)}' +
     '.acxh-card:hover{background:#eff6ff;border-color:#93c5fd}.acxh-card b{font-size:13.5px}.acxh-card span{color:#64748b;font-size:12px}' +
     '.acxh-bar{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #e2e8f0;background:#fff}' +
     '.acxh-back{border:0;background:none;color:#475569;font-weight:600;cursor:pointer;padding:4px 6px;border-radius:6px;font-size:13px}.acxh-back:hover{background:#f1f5f9}' +
@@ -194,18 +196,18 @@
   function build() {
     var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     var fab = document.createElement('button');
-    fab.id = 'acxhFab'; fab.type = 'button'; fab.title = 'Help & Support'; fab.textContent = '?';
+    fab.id = 'acxhFab'; fab.type = 'button'; fab.title = 'Help & Support'; fab.textContent = 'Support';
     var pop = document.createElement('div'); pop.id = 'acxhPop';
     pop.innerHTML =
-      '<div class="acxh-head"><div><b>🤖 Acacia Support</b><small>' + esc(CFG.title) + ' · How can we help?</small></div><button class="acxh-x" data-a="close" type="button">✕</button></div>' +
+      '<div class="acxh-head"><div class="acxh-who"><div class="acxh-av">🤖<i></i></div><div><b>Acacia Support</b><small>How can we help?</small></div></div><button class="acxh-x" data-a="close" type="button">✕</button></div>' +
       '<div class="acxh-ctx" id="acxhCtx"></div>' +
       '<div class="acxh-pane acxh-menu show" id="acxhMenu"><p>Pick how you\'d like help:</p><div class="acxh-grid">' +
-        '<button class="acxh-card" data-a="nav" type="button"><span>🧭</span><b>Navigate</b><span>Find any screen & how to get there</span></button>' +
+        '<button class="acxh-card" data-a="nav" type="button"><span>🧭</span><b>Navigate</b><span>Find any module & how to get there</span></button>' +
         '<button class="acxh-card" data-a="ai" type="button"><span>🤖</span><b>AI Assistant</b><span>Ask a question, get an instant answer</span></button>' +
         '<button class="acxh-card" data-a="chat" type="button"><span>💬</span><b>Chat</b><span>Live chat with our team</span></button>' +
         '<button class="acxh-card" data-a="email" type="button"><span>✉️</span><b>Email</b><span>Send us an email about this screen</span></button>' +
       '</div></div>' +
-      '<div class="acxh-pane" id="acxhNav"><div class="acxh-bar"><button class="acxh-back" data-a="menu" type="button">← Back</button><input id="acxhSearch" placeholder="Search screens…" autocomplete="off"></div><div class="acxh-list" id="acxhRes"></div></div>' +
+      '<div class="acxh-pane" id="acxhNav"><div class="acxh-bar"><button class="acxh-back" data-a="menu" type="button">← Back</button><input id="acxhSearch" placeholder="Search modules…" autocomplete="off"></div><div class="acxh-list" id="acxhRes"></div></div>' +
       '<div class="acxh-pane" id="acxhAI"><div class="acxh-bar"><button class="acxh-back" data-a="menu" type="button">← Back</button><b style="font-size:13px">🤖 AI Assistant</b></div><div class="acxh-msgs" id="acxhMsgs"></div>' +
         '<div class="acxh-esc" id="acxhEsc"><button data-a="email" type="button">✉️ Email support</button><button data-a="chat" type="button">💬 Chat with us</button></div>' +
         '<form class="acxh-send" id="acxhForm"><input id="acxhQ" placeholder="Ask about ' + esc(CFG.title) + '…" autocomplete="off"><button type="submit">Send</button></form></div>';
