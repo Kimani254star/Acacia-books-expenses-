@@ -482,11 +482,15 @@
       if (!document.body || !document.createElement) return;
       if (!pill) {
         pill = document.createElement('button'); pill.type = 'button'; pill.id = 'acxBridgePill';
-        pill.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:99990;border:0;border-radius:999px;padding:5px 11px;font:600 11px system-ui,sans-serif;color:#fff;cursor:pointer;opacity:.9;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+        pill.style.cssText = 'position:fixed;left:12px;bottom:68px;z-index:99990;border:0;border-radius:999px;padding:5px 11px;font:600 11px system-ui,sans-serif;color:#fff;cursor:pointer;opacity:.9;box-shadow:0 2px 8px rgba(0,0,0,.25)';
         pill.onclick = function () { togglePop(); }; document.body.appendChild(pill);
       }
       pill.style.background = ST.state === 'ok' ? '#0f766e' : (ST.state === 'error' || ST.state === 'warn' ? '#b45309' : '#6b7280');
       pill.textContent = ST.state === 'ok' ? '🔗 Books sync ✓' : (ST.state === 'error' ? '⚠ Books sync problem' : (ST.state === 'warn' ? '⚠ Books sync: check' : '🔗 Books sync…'));
+      if (ST.state === 'ok') {
+        if (pill._last !== 'ok') { pill.style.display = ''; clearTimeout(pill._t); pill._t = setTimeout(function () { if (pill && ST.state === 'ok' && !pop) pill.style.display = 'none'; }, 4000); }
+      } else { clearTimeout(pill._t); pill.style.display = ''; }
+      pill._last = ST.state;
       if (pop) fillPop();
     } catch (e) {}
   }
@@ -503,7 +507,7 @@
   function fallbackCopy(t) { try { var a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); } catch (e) {} }
   function togglePop() {
     if (pop) { pop.remove(); pop = null; return; }
-    pop = document.createElement('div'); pop.style.cssText = 'position:fixed;left:12px;bottom:46px;z-index:99991;background:#fff;color:#111;border:1px solid #e5e7eb;border-radius:10px;padding:12px;width:min(340px,92vw);font:12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.2)';
+    pop = document.createElement('div'); pop.style.cssText = 'position:fixed;left:12px;bottom:102px;z-index:99991;background:#fff;color:#111;border:1px solid #e5e7eb;border-radius:10px;padding:12px;width:min(340px,92vw);font:12px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.2)';
     document.body.appendChild(pop); fillPop();
   }
   function setSt(state, msg) { ST.state = state; ST.msg = msg; ST.at = new Date(); paint(); }

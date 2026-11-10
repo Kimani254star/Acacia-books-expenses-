@@ -16,6 +16,13 @@
   --sans:'Cambria', Georgia, serif;
   --serif:'Cambria', Georgia, serif;
 }
+/* Dark theme (picked in Settings > Appearance) */
+html[data-theme="dark"]{
+  --ink:#EDEAD9;--ink-soft:#A9AF9E;--paper:#141F1A;--panel:#1E2B25;--line:#33453C;--line-soft:#2A3A32;
+  --green:#6FA362;--green-deep:#18271C;--gold:#D9A441;--gold-soft:#3B3220;--rust:#E07A5A;--rust-soft:#3D2A22;--blue-soft:#24332D;
+  color-scheme:dark;
+}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#16221C;color:var(--ink);border-color:var(--line)}
 *{box-sizing:border-box;}
 body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--paper);}
 button{font-family:inherit;}

@@ -1,4 +1,4 @@
-/* acacia-signout.js - puts a "Sign out" button at the bottom of the LEFT sidebar so it is always one click away.
+/* acacia-signout.js - puts a "Log out" button at the bottom of the LEFT sidebar so it is always one click away.
    Self-contained (own CSS). It calls the app's own logout, so nothing about login/sync changes.
    Works with: handleLogout() (CRM, Expenses, Payroll, Sell, Mail), signOut() (Inventory, Plans),
    and the #aclOut button (School, Hospital, Meet). */
@@ -38,15 +38,15 @@
 
   function build() {
     var b = document.createElement('button');
-    b.id = 'acxSignOut'; b.type = 'button'; b.title = 'Sign out of this app';
-    b.innerHTML = '<span aria-hidden="true">\u238B</span><span>Sign out</span>';
+    b.id = 'acxSignOut'; b.type = 'button'; b.title = 'Log out of this app';
+    b.innerHTML = '<span aria-hidden="true">\u238B</span><span>Log out</span>';
     b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); logout(); });
     return b;
   }
 
   function ensure() {
     var side = findSide(); if (!side) return;
-    /* School / Hospital / Meet only create their sign-out when someone is logged in, so only show it then */
+    /* School / Hospital / Meet only create their log-out when someone is logged in, so only show it then */
     var needsSession = side.matches('nav#nav');
     var existing = document.getElementById('acxSignOut');
     var loggedIn = !needsSession || !!document.getElementById('aclOut');

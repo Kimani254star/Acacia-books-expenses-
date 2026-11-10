@@ -119,6 +119,22 @@
     return d;
   }
   function esc(s) { return String(s).replace(/"/g, "&quot;"); }
+  /* ---------- Theme picker (Light / Dark / System Default) - same cards as Books > Settings ---------- */
+  var THEMES = [
+    ["light", "Light", "#f8fafc", "#2563eb"],
+    ["dark", "Dark", "#111827", "#60a5fa"],
+    ["system", "System Default", "#ffffff", "#6b7280"]
+  ];
+  function themeHTML() {
+    var cur = (window.AcaciaTheme && window.AcaciaTheme.get()) || "light";
+    return '<div><label class="acap-l">Theme</label><div class="acx-theme-grid">' + THEMES.map(function (t) {
+      var on = t[0] === cur;
+      return '<button type="button" class="acx-theme-card' + (on ? " acx-theme-active" : "") + '" data-acx-theme-choice="' + t[0] + '">' +
+        '<span class="acx-theme-check" style="display:' + (on ? "block" : "none") + '">\u2713</span>' +
+        '<span class="acx-theme-swatch"><span style="background:' + t[2] + '"></span><span style="background:' + t[3] + '"></span></span>' +
+        '<span class="acx-theme-label">' + t[1] + '</span></button>';
+    }).join("") + '</div></div>';
+  }
   function cardHTML() {
     var fonts = FONTS.map(function (g) {
       return '<optgroup label="' + g[0] + '">' + g[1].map(function (o) { return '<option value="' + esc(o[0]) + '">' + o[1] + "</option>"; }).join("") + "</optgroup>";
@@ -129,6 +145,7 @@
       '<div class="acap-card">' +
       '<div class="acap-head"><h3>🎨 Appearance</h3><span class="acap-tag">Theme</span></div>' +
       '<div class="acap-body">' +
+      themeHTML() +
       '<div><label class="acap-l">Sidebar colour</label><div class="acap-row"><input type="color" data-acap="sbBg"><span class="acap-v" data-acap-val="sbBg"></span></div><div class="acap-sws">' + sw + '</div></div>' +
       '<div><label class="acap-l">Sidebar text colour</label><div class="acap-row"><input type="color" data-acap="sbText"><span class="acap-v" data-acap-val="sbText"></span></div></div>' +
       '<div><label class="acap-l">Font</label><select data-acap="font">' + fonts + '</select></div>' +
@@ -157,6 +174,7 @@
       el.innerHTML = cardHTML();
     });
     syncControls();
+    if (window.AcaciaTheme) window.AcaciaTheme.set(window.AcaciaTheme.get());
   }
   function setKey(k, v) {
     var a = get();
@@ -186,6 +204,14 @@
   var base = document.createElement("style");
   base.id = "acap-base";
   base.textContent =
+      ".acx-theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:6px}" +
+      ".acx-theme-card{position:relative;text-align:left;padding:8px;border:2px solid rgba(128,128,128,.3);border-radius:10px;background:transparent;color:inherit;cursor:pointer;font:inherit;transition:box-shadow .15s,border-color .15s}" +
+      ".acx-theme-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.15)}" +
+      ".acx-theme-card.acx-theme-active{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb inset}" +
+      ".acx-theme-swatch{display:flex;height:2.5rem;width:100%;border-radius:.5rem;overflow:hidden;border:1px solid rgba(0,0,0,.1)}" +
+      ".acx-theme-swatch span{flex:1}.acx-theme-swatch span:last-child{flex:0 0 30%}" +
+      ".acx-theme-check{position:absolute;top:6px;right:8px;font-size:13px;font-weight:700;color:#2563eb;z-index:1}" +
+      ".acx-theme-label{display:block;margin-top:8px;font-size:13px;font-weight:600}" +
     ".acap-card{border:1px solid rgba(128,128,128,.28);border-radius:10px;padding:18px 20px;max-width:560px;background:transparent;color:inherit;margin-bottom:16px}" +
     ".acap-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(128,128,128,.22);padding-bottom:10px;margin-bottom:14px}" +
     ".acap-head h3{margin:0;font-size:15px;font-weight:700}" +
