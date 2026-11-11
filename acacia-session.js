@@ -32,8 +32,25 @@
     return rawFetch.call(this, input, init);
   };
 
+  /* Ask the server to check a login. Returns {status:'ok'|'denied'|'missing'|'error', rows:[...]}; rows carry no password fields and one 'session' each.
+     Nothing is stored: the caller decides which row to accept and calls add(row.session). */
+  var recent = { k: '', t: 0 };
+  async function login(email, password, company) {
+    try {
+      var em = String(email || '').trim().toLowerCase();
+      var r = await rawFetch.call(w, BASE + 'rpc/acx_login', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_email: em, p_password: password, p_company: company || null }) });
+      if (r.status === 404) return { status: 'missing', rows: [] };
+      if (!r.ok) return { status: 'error', rows: [] };
+      var rows = await r.json(); rows = Array.isArray(rows) ? rows : [];
+      if (rows.length) recent = { k: em, t: Date.now() };
+      return { status: rows.length ? 'ok' : 'denied', rows: rows };
+    } catch (e) { return { status: 'network', rows: [] }; }
+  }
+
   /* For apps whose own login runs in the browser (Books): after it succeeds, ask the server for a session. */
   async function start(email, password, company) {
+    if (recent.k && recent.k === String(email || '').trim().toLowerCase() && Date.now() - recent.t < 60000) return true;   /* login() just did this */
     try {
       var r = await rawFetch.call(w, BASE + 'rpc/acx_login', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' },
         body: JSON.stringify({ p_email: String(email || '').trim().toLowerCase(), p_password: password, p_company: company || null }) });
@@ -44,5 +61,29 @@
     } catch (e) { return false; }
   }
 
-  w.AcxSession = { add: add, list: list, clear: clear, start: start };
+  /* Books: check the password on the server first. Only when acx_login is missing or unreachable does it use the old
+     'fallback' (which reads the account row). Returns the account data to merge into the local users list, or null. */
+  async function accountFirst(email, company, fallback) {
+    var pass = ''; try { pass = String((w.document.getElementById('loginPass') || {}).value || '').trim(); } catch (e) {}
+    if (!pass) return fallback();
+    var res = await login(email, pass, company);
+    if (res.status === 'missing' || res.status === 'network') return fallback();
+    if (res.status !== 'ok') return null;
+    var row = res.rows[0];
+    if (company && w.acxCompanyMatches) {
+      var m = res.rows.filter(function (x) { var d = Object.assign({}, x.data || {}); d.companyId = d.companyId || x.company_id; return w.acxCompanyMatches(d, company); })[0];
+      if (m) row = m;
+    }
+    var u = Object.assign({}, row.data || {}); u.companyId = u.companyId || row.company_id;
+    /* the server just confirmed this password, so keep a salted hash of it on this device for the app's own local check */
+    var sb = new Uint8Array(16); w.crypto.getRandomValues(sb);
+    var salt = Array.prototype.map.call(sb, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    var dig = await w.crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + pass));
+    u.passwordHash = Array.prototype.map.call(new Uint8Array(dig), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    u.passwordSalt = salt; delete u.password;
+    if (row.session) add(row.session);
+    return u;
+  }
+
+  w.AcxSession = { add: add, list: list, clear: clear, start: start, login: login, accountFirst: accountFirst };
 })(window);
