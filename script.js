@@ -145,6 +145,29 @@ function hpContact(e){
 
   async function signIn(email, pass, company) {
     email = low(email);
+    /* passwords are checked inside Postgres (acx_login); the browser never sees a hash */
+    var rows;
+    try { rows = await rpc('acx_login', { p_email: email, p_password: pass, p_company: company || null }); }
+    catch (e) { if (e.code === 'missing') return signInLegacy(email, pass, company); throw e; }   /* acx_login not installed yet: remove this line once step2_secure_login.sql is run */
+    if (!Array.isArray(rows) || !rows.length) return null;
+    return finishSignIn(rows, email);
+  }
+
+  async function finishSignIn(ok, email) {
+    var row = ok[0];
+    if (ok.length > 1) {
+      var pick = w.prompt('This login belongs to more than one company:\n' + ok.map(function (x, n) { return (n + 1) + '. ' + ((x.data && x.data.companyName) || x.company_id) + ' (' + x.company_id + ')'; }).join('\n') + '\n\nType the number to open:', '1');
+      row = ok[(parseInt(pick, 10) || 1) - 1] || ok[0];
+    }
+    var msg = await gate(row.company_id, email); if (msg) throw err('blocked', msg);
+    try { if (row.session && w.AcxSession) w.AcxSession.add(row.session); } catch (e) {}   /* session token for row-level security */
+    var d = row.data || {};
+    return { companyId: row.company_id, company: d.companyName || '', name: d.fullName || d.username || email.split('@')[0], email: email, role: mapRole(d.role, d) };
+  }
+
+  /* OLD path (reads the hash into the browser). Only used until acx_login exists. */
+  async function signInLegacy(email, pass, company) {
+    email = low(email);
     var r = await req('app_accounts?select=login_id,username,company_id,data&login_id=eq.' + enc(email));
     if (!r.ok) throw err('offline', 'Could not read accounts (' + r.status + '). Run acacia_apps_cloud.sql in Supabase.');
     var rows = await r.json(), ok = [], cn = low(company);
@@ -162,7 +185,7 @@ function hpContact(e){
   }
 
   async function register(o) {
-    var salt = newSalt(), h = await hash(o.password, salt);
+    var salt = o.passwordSalt || newSalt(), h = o.passwordHash || await hash(o.password, salt);
     var id = await rpc('acx_register_company', { p_company: o.company, p_name: o.name, p_email: low(o.email), p_hash: h, p_salt: salt, p_app: cfg.app, p_plan: o.plan || '', p_billing: o.billing || 'monthly' });
     var blocked = await gate(id, o.email);
     return { companyId: id, passwordHash: h, passwordSalt: salt, blocked: blocked };
@@ -171,7 +194,7 @@ function hpContact(e){
   /* teammates added inside an app (CRM Users & Roles). The app's own role is kept per app; Books sees admin/user */
   var booksRole = function (r) { return /^admin/i.test(String(r || '')) ? 'admin' : 'user'; };
   async function addUser(o) {
-    var salt = newSalt(), h = await hash(o.password, salt);
+    var salt = o.passwordSalt || newSalt(), h = o.passwordHash || await hash(o.password, salt);
     await rpc('acx_add_user', { p_company: o.companyId, p_name: o.name, p_email: low(o.email), p_role: booksRole(o.role), p_hash: h, p_salt: salt, p_app: cfg.app, p_app_role: o.role || '' });
     return { passwordHash: h, passwordSalt: salt };
   }
@@ -183,26 +206,34 @@ function hpContact(e){
     try {
       var list = JSON.parse(localStorage.getItem(usersKey) || '[]');
       var rec = { companyId: u.companyId, company: u.company, name: u.name, email: low(u.email), role: u.role, passwordHash: u.passwordHash, passwordSalt: u.passwordSalt };
+      Object.keys(rec).forEach(function (k) { if (rec[k] === undefined) delete rec[k]; });
       var i = list.findIndex(function (x) { return low(x.email) === rec.email && x.companyId === rec.companyId; });
       if (i > -1) { list[i] = Object.assign({}, list[i], rec); delete list[i].password; } else list.push(rec);
       rawSet.call(localStorage, usersKey, JSON.stringify(list));
     } catch (e) {}
   }
-  function verifyLocal(u, pass) { return verify(u, pass); }
+  async function verifyLocal(u, pass) {
+    if (!u) return false;
+    if (u.passwordHash && u.passwordSalt) return verify({ passwordHash: u.passwordHash, passwordSalt: u.passwordSalt }, pass);
+    /* old record from before this fix: accept the plaintext once, then replace it with a salted hash and wipe it */
+    if (typeof u.password === 'string' && u.password === pass) { var s = newSalt(); u.passwordHash = await hash(pass, s); u.passwordSalt = s; delete u.password; return true; }
+    return false;
+  }
+  async function sealLocal(pass) { var s = newSalt(); return { passwordHash: await hash(pass, s), passwordSalt: s }; }
 
   /* accounts that only ever existed in this browser get a cloud company; their data and teammates move with them.
      'all' is the local users array: it is updated in place (caller saves it). Returns the signed-in user's new record. */
   async function migrate(u, pass, all) {
     var oldId = u.companyId, same = (all || [u]).filter(function (x) { return x.companyId === oldId; });
-    var owner = same.find(function (x) { return /^admin/i.test(String(x.role || 'Administrator')) && x.password; }) || u;
+    var owner = same.find(function (x) { return /^admin/i.test(String(x.role || 'Administrator')) && (x.password || x.passwordHash); }) || u;
     var ownerPass = owner === u ? pass : owner.password;
-    var r = await register({ company: owner.company, name: owner.name, email: owner.email, password: ownerPass });
+    var r = await register({ company: owner.company, name: owner.name, email: owner.email, password: ownerPass, passwordHash: owner.passwordHash, passwordSalt: owner.passwordSalt });
     for (var i = 0; i < same.length; i++) {
       var x = same[i];
       if (x === owner) { x.passwordHash = r.passwordHash; x.passwordSalt = r.passwordSalt; }
       else {
         var pw = x === u ? pass : x.password;
-        if (pw) { try { var h = await addUser({ companyId: r.companyId, name: x.name, email: x.email, password: pw, role: x.role || 'Administrator' }); x.passwordHash = h.passwordHash; x.passwordSalt = h.passwordSalt; } catch (e) { continue; } }
+        if (pw || x.passwordHash) { try { var h = await addUser({ companyId: r.companyId, name: x.name, email: x.email, password: pw, passwordHash: x.passwordHash, passwordSalt: x.passwordSalt, role: x.role || 'Administrator' }); x.passwordHash = h.passwordHash; x.passwordSalt = h.passwordSalt; } catch (e) { continue; } }
         else continue;
       }
       delete x.password; x.companyId = r.companyId;
@@ -458,7 +489,7 @@ function hpContact(e){
   };
   setTimeout(function () { try { if (w.acxPlanChanged) w.acxPlanChanged(); } catch (e) {} }, 0);
 
-  w.AcaciaCloud = { onRemote: onRemote, sync: syncNow, init: init, signIn: signIn, register: register, addUser: addUser, setRole: setRole, removeUser: removeUser, cacheUser: cacheUser, verifyLocal: verifyLocal, migrate: migrate, start: start, stop: stop, flush: flush, isCloudId: isCloudId, gate: gate, URL: URL_, KEY: KEY_, rpc: rpc, req: req };
+  w.AcaciaCloud = { onRemote: onRemote, sync: syncNow, init: init, signIn: signIn, register: register, addUser: addUser, setRole: setRole, removeUser: removeUser, cacheUser: cacheUser, verifyLocal: verifyLocal, sealLocal: sealLocal, migrate: migrate, start: start, stop: stop, flush: flush, isCloudId: isCloudId, gate: gate, URL: URL_, KEY: KEY_, rpc: rpc, req: req };
 })(window);
 ;
 /* ================= DATA LAYER ================= */
@@ -554,7 +585,7 @@ async function handleRegister(){
     if(e.code === 'exists'){ showAuthError('registerError','This company already has an account with that email. Please sign in instead.'); return; }
     if(e.code !== 'offline'){ showAuthError('registerError', e.message || 'Could not create the account. Please try again.'); return; }
     if(users.some(u=>u.email===email)){ showAuthError('registerError','An account with that email already exists.'); return; }
-    user = {companyId:uid('co'), company, name, email, password, role:'Administrator'};   // offline: uploaded the next time you sign in online
+    user = Object.assign({companyId:uid('co'), company, name, email, role:'Administrator'}, await AcaciaCloud.sealLocal(password));   // offline: uploaded the next time you sign in online
   }
   if(viaCloud) AcaciaCloud.cacheUser(USERS_KEY, user); else { users.push(user); saveUsers(users); }
   setSession(user);
@@ -576,6 +607,7 @@ async function handleLogin(){
     const users = getUsers();
     for(const u of users){ if(u.email === email && String(u.company||'').trim().toLowerCase() === company.toLowerCase() && await AcaciaCloud.verifyLocal(u, password)){ user = u; break; } }
     if(!user){ showAuthError('loginError','That email and password combination was not found.'); return; }
+    saveUsers(users);   /* keeps the plaintext-to-hash upgrade */
     if(!AcaciaCloud.isCloudId(user.companyId)){
       try{ const moved = await AcaciaCloud.migrate(user, password, users); if(moved){ saveUsers(users); user = moved; } }catch(e){ /* offline: stays on this device for now */ }
     }
@@ -762,7 +794,7 @@ function renderDashboard(){
         </div>
         <div style="text-align:right;">
           <div style="font-variant-numeric:tabular-nums;">${fmt(e.total)}</div>
-          <span class="status-pill ${statusClass(e.status)}" style="font-size:10px;">${e.status}</span>
+          <span class="status-pill ${statusClass(e.status)}" style="font-size:10px;">${escapeHtml(e.status)}</span>
         </div>
       </div>`).join('');
   }
@@ -823,7 +855,7 @@ function renderExpenseTable(){
           <td>${e.category}</td>
           <td>${e.taxRate>0 ? 'VAT '+e.taxRate+'%' : '—'}</td>
           <td class="num">${fmtPlain(e.total)}</td>
-          <td><span class="status-pill ${statusClass(e.status)}">${e.status}</span></td>
+          <td><span class="status-pill ${statusClass(e.status)}">${escapeHtml(e.status)}</span></td>
           <td class="acx-cell">${ACX_ACT({view:`openDetail('${e.id}')`, edit:`openEditExpense('${e.id}')`, clone:`rowCloneExpense('${e.id}')`, del:`rowDeleteExpense('${e.id}')`})}</td>
         </tr>`).join('')}
     </tbody>
@@ -955,7 +987,7 @@ function renderConnectStatus(){
   if(!books){
     host.innerHTML = `<div class="empty-state">
       <div class="title">Not connected yet</div>
-      <div class="hint">This account (${CURRENT_USER.company}) hasn't set up Acacia Payroll / Books. Log in to Acacia Payroll with the same email, then come back here.</div>
+      <div class="hint">This account (${escapeHtml(CURRENT_USER.company)}) hasn't set up Acacia Payroll / Books. Log in to Acacia Payroll with the same email, then come back here.</div>
       <button class="btn btn-primary" onclick="refreshBooksConnection()">Connect</button>
     </div>`;
     return;
@@ -1182,7 +1214,7 @@ function openDetail(id){
     <div><div class="k">Tax</div><div class="v">${e.taxRate>0?'VAT '+e.taxRate+'%':'No tax'}</div></div>
     <div><div class="k">Tax Amount</div><div class="v">${fmt(e.taxAmount)}</div></div>
     <div><div class="k">Payment Status</div><div class="v">${e.paymentStatus}</div></div>
-    <div><div class="k">Reference</div><div class="v">${e.reference||'—'}</div></div>
+    <div><div class="k">Reference</div><div class="v">${escapeHtml(e.reference||'—')}</div></div>
   `;
 
   const net = e.amount;
