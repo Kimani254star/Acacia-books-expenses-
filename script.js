@@ -116,7 +116,7 @@ function hpContact(e){
 
   /* deleted / suspended companies are blocked (fails open if the cloud can't be reached) */
   async function gate(cid, login) {
-    try { if ((await rpc('acx_account_state', { p_company: low(cid), p_login: low(login) })) === 'deleted') return 'This account was removed by Acacia support.'; } catch (e) {}
+    try { if (/^(deleted|deactivated)$/.test(String(await rpc('acx_account_state', { p_company: low(cid), p_login: low(login) })))) return 'This company account has been deactivated or removed. Contact Acacia support.'; } catch (e) {}
     try {
       var r = await req('acacia_company_status?select=status&company_id=eq.' + enc(cid));
       if (r.ok) { var j = await r.json(); var s = j[0] && j[0].status; if (s === 'pending') return 'Your company is waiting for approval by Acacia support. You will be able to sign in as soon as it is approved.'; if (s && s !== 'active') return 'Your company account is "' + s + '". Please contact Acacia support.'; }
