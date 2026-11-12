@@ -737,6 +737,23 @@
 
   function readKeys() { var k = ['customers', 'invoices', 'suppliers', 'employees', 'projects', 'appInbox']; if (APP === 'expenses') k.push('inventory', 'chartOfAccounts', 'banks', 'bills', 'bulkBills', 'recurringBills', 'operationalCosts', 'grns', 'billPayments'); if (APP === 'projects') k.push('plans', 'budgets'); if (APP === 'sell') k.push('inventory', 'banks', 'chartOfAccounts'); return k; }
 
+  /* Stock: join every Books warehouse row (inventory_<warehouse>) into one "inventory" list, read through acx_stock_read so
+     no warehouse is missed (a plain read of 'inventory' returned nothing when Books keeps stock per warehouse). */
+  async function mergeStock(company, rows) {
+    var res; try { res = await w.AcaciaCloud.rpc('acx_stock_read', { p_company: company }); } catch (e) { return; }   /* not installed yet: run acacia_stock_sync.sql */
+    if (!Array.isArray(res) || !res.length) return;
+    var all = [], last = null;
+    res.forEach(function (r) {
+      var v = r.value; try { for (var i = 0; i < 3 && typeof v === 'string'; i++) v = JSON.parse(v); } catch (e) { return; }
+      if (!Array.isArray(v)) return;
+      var wh = r.key.indexOf('inventory_') === 0 ? r.key.slice(10) : '';
+      v.forEach(function (x) { if (x && typeof x === 'object') { if (!x.warehouse && wh) x.warehouse = wh; all.push(x); } });
+      if (!last || String(r.updated_at) > String(last)) last = r.updated_at;
+    });
+    Object.keys(rows).forEach(function (k) { if (k.indexOf('inventory_') === 0) delete rows[k]; });
+    rows.inventory = { key: 'inventory', value: JSON.stringify(all), updated_at: last };
+  }
+
   async function sync(force) {
     if (busy) return; var u = user(); APP = detect();
     if (!u || !APP) return;
@@ -746,6 +763,7 @@
     try {
       var rows = {}, res = await w.AcaciaCloud.rpc('acx_books_read', { p_company: u.companyId, p_keys: readKeys() });
       (res || []).forEach(function (r) { rows[r.key] = r; });
+      try { await mergeStock(u.companyId, rows); } catch (e) { console.warn('[acacia-bridge] stock', e); }
       combineInventory(rows);
       if (APP === 'projects' && rows.projects) {
         try { var pj = JSON.parse(rows.projects.value); if (typeof pj === 'string') pj = JSON.parse(pj);
