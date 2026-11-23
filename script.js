@@ -710,42 +710,55 @@ function renderDashboard(){
   const A = ADX, C = A.C, K = n => 'KES ' + A.short(n);
   const host = document.getElementById('adxDash'); if(!host) return;
   const exps = costRows(), now = new Date();
-  const total = exps.reduce((s,e)=>s+e.total,0);
-  const monthKey = now.toISOString().slice(0,7);
-  const thisMonth = exps.filter(e=>e.date.slice(0,7)===monthKey).reduce((s,e)=>s+e.total,0);
-  const pend = exps.filter(e=>e.status==='Pending Approval'), appr = exps.filter(e=>e.status==='Approved');
-  const sum = l => l.reduce((s,e)=>s+e.total,0);
-  const paid = exps.filter(e=>e.status==='Paid').reduce((s,e)=>s+e.total,0);
-  const outstanding = exps.filter(e=>e.paymentStatus==='Unpaid').reduce((s,e)=>s+e.total,0);
-  const vat = exps.reduce((s,e)=>s+e.taxAmount,0), operating = exps.reduce((s,e)=>s+e.amount,0);
-  const byCat = {}; exps.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.total; });
-  const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]), palette = [C.g, C.b, C.o, C.p, C.r, C.gl];
-  const top = cats.slice(0,4), rest = cats.slice(4).reduce((s,c)=>s+c[1],0);
-  const segs = top.map((c,i)=>({v:c[1], c:palette[i], l:c[0], t:total?Math.round(c[1]/total*100)+'%':'0%'})); if(rest) segs.push({v:rest, c:palette[4], l:'Others', t:Math.round(rest/total*100)+'%'});
-  const ms = A.months(6), byM = {}; exps.forEach(e=>{ const k=e.date.slice(0,7); byM[k]=(byM[k]||0)+e.total; });
-  const purchaseTrend = ms.map(m=>({l:m.l, v:byM[m.k]||0}));
-  const recent = [...exps].sort((a,b)=> b.date.localeCompare(a.date) || b.expNo.localeCompare(a.expNo)).slice(0,5);
+  const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const monthKey = today.slice(0,7);
+  const total = exps.reduce((s,e)=>s+(Number(e.total)||0),0);
+  const todayRows = exps.filter(e=>String(e.date||'').slice(0,10)===today);
+  const todayTotal = todayRows.reduce((s,e)=>s+(Number(e.total)||0),0);
+  const monthRows = exps.filter(e=>String(e.date||'').slice(0,7)===monthKey);
+  const thisMonth = monthRows.reduce((s,e)=>s+(Number(e.total)||0),0);
+  const pend = exps.filter(e=>e.status==='Pending Approval');
+  const appr = exps.filter(e=>e.status==='Approved');
+  const paidRows = exps.filter(e=>e.status==='Paid'||e.paymentStatus==='Paid');
+  const paid = paidRows.reduce((s,e)=>s+(Number(e.total)||0),0);
+  const outstandingRows = exps.filter(e=>e.paymentStatus==='Unpaid'||(!e.paymentStatus&&e.status!=='Paid'));
+  const outstanding = outstandingRows.reduce((s,e)=>s+(Number(e.total)||0),0);
+  const categories = [...new Set(exps.map(e=>e.category).filter(Boolean))];
+  const suppliers = (db.suppliers||[]).length;
+  const byCat = {}; exps.forEach(e=>{const key=e.category||'Uncategorised';byCat[key]=(byCat[key]||0)+(Number(e.total)||0);});
+  const topCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const ms = A.months(6), byM = {}; exps.forEach(e=>{const k=String(e.date||'').slice(0,7);byM[k]=(byM[k]||0)+(Number(e.total)||0);});
+  const purchaseTrend = ms.map(m=>({l:m.l,v:byM[m.k]||0}));
+  const recent = [...exps].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.expNo||'').localeCompare(String(a.expNo||''))).slice(0,6);
   const go = v => `document.querySelector('.nav-item[data-view=&quot;${v}&quot;]').click()`;
+  const money = n => fmt(Number(n)||0);
+  const recentBody = recent.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;color:var(--ax-mut);font-size:12px"><th style="padding:9px 12px">Description</th><th>Reference</th><th>Date</th><th style="text-align:right">Total</th><th style="padding:9px 12px">Status</th></tr></thead><tbody>${recent.map(e=>`<tr style="border-top:1px solid var(--ax-line)"><td style="padding:10px 12px">${escapeHtml(e.description||'')}</td><td>${escapeHtml(e.expNo||e.reference||'—')}</td><td>${fmtDate(e.date)}</td><td style="text-align:right">${money(e.total)}</td><td style="padding:10px 12px">${A.pill(e.status,e.status==='Paid'||e.status==='Approved'?'':'o')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="adx-empty">No expenses recorded yet.</div>';
+  const topBody = topCats.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--ax-mut);font-size:12px;text-align:left"><th style="padding:9px 12px">Category</th><th style="text-align:right;padding:9px 12px">Amount spent</th></tr></thead><tbody>${topCats.map(c=>`<tr style="border-top:1px solid var(--ax-line)"><td style="padding:10px 12px">${escapeHtml(c[0])}</td><td style="text-align:right;padding:10px 12px">${money(c[1])}</td></tr>`).join('')}</tbody></table></div>` : '<div class="adx-empty">No purchases recorded yet.</div>';
+  const pendingBody = pend.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--ax-mut);font-size:12px;text-align:left"><th style="padding:9px 12px">Expense</th><th style="text-align:right">Amount</th><th style="padding:9px 12px">Status</th></tr></thead><tbody>${pend.slice(0,5).map(e=>`<tr style="border-top:1px solid var(--ax-line)"><td style="padding:10px 12px">${escapeHtml(e.description||'')}</td><td style="text-align:right">${money(e.total)}</td><td style="padding:10px 12px">${A.pill(e.status,'o')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="adx-empty">No expenses are awaiting approval.</div>';
   host.innerHTML = `<div class="adx-wrap">
-  ${A.head('wallet','Expenses Dashboard', now.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long', year:'numeric'}), `<button class="adx-btn" onclick="document.getElementById('csvImport').click()">Import CSV</button><button class="adx-btn pri" onclick="openNewExpense()">+ New Expense</button>`)}
+  ${A.head('wallet','Expenses Dashboard',now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),`<button class="adx-btn" onclick="document.getElementById('csvImport').click()">Import CSV</button><button class="adx-btn pri" onclick="openNewExpense()">+ New Expense</button>`)}
   <div class="adx-grid adx-g4">
-    ${A.kpi({i:'wallet',l:'Total Expenses',v:K(total),d:`<div class="adx-d fl">${exps.length} records</div>`})}
-    ${A.kpi({i:'check',c:'b',l:'Approved',v:appr.length,d:`<div class="adx-d fl">${K(sum(appr))}</div>`})}
-    ${A.kpi({i:'clock',c:'o',l:'Pending Approval',v:pend.length,d:`<div class="adx-d fl">${K(sum(pend))}</div>`})}
-    ${A.kpi({i:'file',c:'p',l:'Outstanding',v:K(outstanding),d:`<div class="adx-d fl">${K(paid)} paid</div>`})}
+    ${A.kpi({i:'wallet',l:'Expenses Today',v:K(todayTotal),d:`<div class="adx-d fl">${todayRows.length} expenses recorded</div>`})}
+    ${A.kpi({i:'trend',c:'b',l:'Expenses This Month',v:K(thisMonth),d:`<div class="adx-d fl">${monthRows.length} expenses total</div>`})}
+    ${A.kpi({i:'file',c:'o',l:'Outstanding Expenses',v:K(outstanding),d:`<div class="adx-d fl">${outstandingRows.length} unpaid or pending</div>`})}
+    ${A.kpi({i:'wallet',c:'p',l:'Payments Made',v:K(paid),d:`<div class="adx-d fl">${paidRows.length} payments recorded</div>`})}
   </div>
-  <div class="adx-grid adx-g2">
-    ${A.panel('By Category', exps.length ? A.donut(segs, K(total), 'Total') : '<div class="adx-empty">No expenses recorded yet — categories appear once you add one.</div>', {i:'chart', link:['Categories', go('categories')]})}
-    ${A.panel('Monthly Spend', exps.length ? A.bars(ms.map(m=>({l:m.l, v:[byM[m.k]||0]})), [C.g]) : '<div class="adx-empty">Monthly totals will draw here.</div>', {i:'trend'})}
+  <div class="adx-grid adx-g4">
+    ${A.kpi({i:'tag',l:'Categories',v:categories.length,d:`<div class="adx-d fl">Expense categories in use</div>`})}
+    ${A.kpi({i:'clock',c:'b',l:'Pending Approval',v:pend.length,d:`<div class="adx-d fl">${K(pend.reduce((s,e)=>s+(Number(e.total)||0),0))} awaiting approval</div>`})}
+    ${A.kpi({i:'file',c:'o',l:'Expense Records',v:exps.length,d:`<div class="adx-d fl">${appr.length} approved</div>`})}
+    ${A.kpi({i:'users',c:'p',l:'Suppliers',v:suppliers,d:`<div class="adx-d fl">Registered suppliers</div>`})}
   </div>
-  <div class="adx-grid adx-gfull">
-    ${A.panel('Purchase Trend', purchaseTrend.some(t=>t.v) ? A.line(purchaseTrend) : '<div class="adx-empty">Purchases you record will draw the trend here.</div>', {i:'trend'})}
+  <div class="adx-grid" style="grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);align-items:start">
+    ${A.panel('Recent Expenses',recentBody,{i:'file',link:['View all expenses',go('expenses')]})}
+    <div style="display:grid;gap:14px;align-content:start">
+      ${A.panel('Top Expense Categories',topBody,{i:'tag',link:['View categories',go('categories')]})}
+      ${A.panel('Pending Approvals',pendingBody,{i:'clock',link:['Review expenses',go('expenses')]})}
+    </div>
   </div>
-  <div class="adx-grid adx-g21">
-    ${A.panel('Recent Expenses', recent.length ? recent.map(e=>A.row('', `<b>${escapeHtml(e.description)}</b><div style="font-size:11.5px;color:var(--ax-mut)">${fmtDate(e.date)} · ${escapeHtml(e.category)}</div>`, `${fmt(e.total)}<div>${A.pill(e.status, e.status==='Paid'||e.status==='Approved'?'':'o')}</div>`)).join('') : `<div class="adx-empty">No expenses yet. <button class="adx-btn pri" onclick="openNewExpense()">+ New Expense</button></div>`, {i:'clock', link:['View all', go('expenses')]})}
-    ${A.panel('Cost Summary', A.row('', 'This month', K(thisMonth)) + A.row('', 'Operating costs', K(operating)) + A.row('', 'VAT / input tax', K(vat)) + A.row('', 'Paid', K(paid)), {i:'tag'})}
+  <div class="adx-grid" style="grid-template-columns:minmax(0,1fr)">
+    ${A.panel('Purchase Trends',purchaseTrend.some(t=>t.v)?A.line(purchaseTrend):'<div class="adx-empty">Purchases you record will draw the trend here.</div>',{i:'trend'})}
   </div>
-  <div class="adx-banner"><b>Control costs</b><span>${pend.length ? pend.length+' expense'+(pend.length>1?'s are':' is')+' waiting for approval.' : 'Nothing is waiting for approval.'}</span><button class="adx-btn pri" onclick="${go('expenses')}">Review expenses</button></div>
   </div>`;
 }
 
