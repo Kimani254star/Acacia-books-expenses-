@@ -29,7 +29,7 @@ body .avatar,body .user-badge{background:var(--ax-g)!important;color:#fff!import
 .adx-btn.pri{background:var(--ax-g);border-color:var(--ax-g);color:#fff}.adx-btn:hover{filter:brightness(.97)}
 .adx-grid{display:grid;gap:14px;margin-bottom:14px}
 .adx-g4{grid-template-columns:repeat(4,minmax(0,1fr))}.adx-g3{grid-template-columns:repeat(3,minmax(0,1fr))}
-.adx-g21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}.adx-g2{grid-template-columns:repeat(2,minmax(0,1fr))}.adx-g111{grid-template-columns:repeat(3,minmax(0,1fr))}
+.adx-g21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}.adx-gfull{grid-template-columns:minmax(0,1fr)}.adx-g2{grid-template-columns:repeat(2,minmax(0,1fr))}.adx-g111{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:1100px){.adx-g4{grid-template-columns:repeat(2,minmax(0,1fr))}.adx-g21,.adx-g111,.adx-g3{grid-template-columns:1fr}}
 @media(max-width:620px){.adx-g4,.adx-g2{grid-template-columns:1fr}}
 .adx-kpi,.adx-panel{background:var(--ax-card);border:1px solid var(--ax-line);border-radius:12px;box-shadow:var(--ax-sh)}

@@ -723,6 +723,7 @@ function renderDashboard(){
   const top = cats.slice(0,4), rest = cats.slice(4).reduce((s,c)=>s+c[1],0);
   const segs = top.map((c,i)=>({v:c[1], c:palette[i], l:c[0], t:total?Math.round(c[1]/total*100)+'%':'0%'})); if(rest) segs.push({v:rest, c:palette[4], l:'Others', t:Math.round(rest/total*100)+'%'});
   const ms = A.months(6), byM = {}; exps.forEach(e=>{ const k=e.date.slice(0,7); byM[k]=(byM[k]||0)+e.total; });
+  const purchaseTrend = ms.map(m=>({l:m.l, v:byM[m.k]||0}));
   const recent = [...exps].sort((a,b)=> b.date.localeCompare(a.date) || b.expNo.localeCompare(a.expNo)).slice(0,5);
   const go = v => `document.querySelector('.nav-item[data-view=&quot;${v}&quot;]').click()`;
   host.innerHTML = `<div class="adx-wrap">
@@ -735,7 +736,10 @@ function renderDashboard(){
   </div>
   <div class="adx-grid adx-g2">
     ${A.panel('By Category', exps.length ? A.donut(segs, K(total), 'Total') : '<div class="adx-empty">No expenses recorded yet — categories appear once you add one.</div>', {i:'chart', link:['Categories', go('categories')]})}
-    ${A.panel('Monthly Expenses', exps.length ? A.bars(ms.map(m=>({l:m.l, v:[byM[m.k]||0]})), [C.g]) : '<div class="adx-empty">Monthly totals will draw here.</div>', {i:'trend'})}
+    ${A.panel('Monthly Spend', exps.length ? A.bars(ms.map(m=>({l:m.l, v:[byM[m.k]||0]})), [C.g]) : '<div class="adx-empty">Monthly totals will draw here.</div>', {i:'trend'})}
+  </div>
+  <div class="adx-grid adx-gfull">
+    ${A.panel('Purchase Trend', purchaseTrend.some(t=>t.v) ? A.line(purchaseTrend) : '<div class="adx-empty">Purchases you record will draw the trend here.</div>', {i:'trend'})}
   </div>
   <div class="adx-grid adx-g21">
     ${A.panel('Recent Expenses', recent.length ? recent.map(e=>A.row('', `<b>${escapeHtml(e.description)}</b><div style="font-size:11.5px;color:var(--ax-mut)">${fmtDate(e.date)} · ${escapeHtml(e.category)}</div>`, `${fmt(e.total)}<div>${A.pill(e.status, e.status==='Paid'||e.status==='Approved'?'':'o')}</div>`)).join('') : `<div class="adx-empty">No expenses yet. <button class="adx-btn pri" onclick="openNewExpense()">+ New Expense</button></div>`, {i:'clock', link:['View all', go('expenses')]})}
