@@ -300,7 +300,7 @@
             var rl = Number(x.reorderLevel || x.reorder || 0) || 0; if (rl && !a.reorder) a.reorder = rl;
           });
           order.forEach(function (key) {
-            var a = agg[key], p = d.products.find(function (x) { return x.bk === key; });
+            var a = agg[key], p = d.products.find(function (x) { return x.bk === key; }); if (!p) { var lg = low(a.sku || a.name); p = d.products.find(function (x) { return x.bk === lg; }); if (p) p.bk = key; }   /* adopt a product saved under the old key instead of duplicating it */
             if (!p) {
               if (d.products.some(function (x) { return !x.bk && ((a.sku && x.sku && low(x.sku) === low(a.sku)) || low(x.name) === low(a.name)); })) return;   /* already a Sell product - leave it alone */
               d.products.unshift({ id: 'P-bk' + hx(key).slice(0, 8), name: a.name, sku: a.sku || ('BK-' + hx(key).slice(0, 6)), price: a.price, vat: a.vat, stock: a.qty, reorder: a.reorder, unit: a.unit, bk: key }); changed = true; return;

@@ -77,7 +77,7 @@
     '@media (max-width:700px){#acxsbBar{width:48px}#acxsbBar button{justify-content:center}#acxsbBar .acxsb-l{display:none}body.acxsb-on .acxsb-pad{margin-right:48px!important;margin-left:0!important;width:auto!important;max-width:none!important}body.acxsb-on #acxhFab,body.acxsb-on #acxhPop,body.acxsb-on #acxsRoot{right:64px!important}#acxsbBadge{top:-2px;right:2px;transform:none}#acxsbPanel{right:8px;left:8px;width:auto;max-width:none}}';
 
   var TOOLS = [
-    ['notes', '📔', 'Acacia Notebook'], ['webinar', '🎥', 'Webinars'], ['team', '💬', 'Team Status'], ['support', '🎧', 'Support Hub'], ['org', '🏢', 'Organization Details'],
+    ['notes', '📔', 'Acacia Notebook'], ['webinar', '🎥', 'Webinars'], ['team', '💬', 'Team Status'], ['meet', '📹', 'Acacia Meet', 'https://acacia-meet.vercel.app/'], ['support', '🎧', 'Support Hub'], ['org', '🏢', 'Organization Details'],
     ['-'],
     ['gdocs', '📄', 'Google Docs', 'https://docs.google.com/'], ['gsheets', '📊', 'Google Sheets', 'https://sheets.google.com/'],
     ['gphotos', '🖼️', 'Google Photos', 'https://photos.google.com/'], ['gcal', '📅', 'Google Calendar', 'https://calendar.google.com/']

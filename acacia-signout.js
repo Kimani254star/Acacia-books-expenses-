@@ -26,7 +26,6 @@
   }
 
   function logout() {
-    try { if (window.AcxSession) window.AcxSession.clear(true); } catch (e) {}   /* drop the session token */
     try {
       if (typeof window.handleLogout === 'function') return window.handleLogout();
       if (typeof window.signOut === 'function') return window.signOut();

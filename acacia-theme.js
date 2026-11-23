@@ -1,3 +1,142 @@
+/* Session header installer. It lives in the first script of the page so window.fetch is wrapped BEFORE supabase-js or any app code
+   captures it. Same block as Books; guarded by "if (w.AcxSession) return" so it only installs once. */
+/* ===== merged from acacia-session.js ===== */
+/* acacia-session.js - sends the Acacia session token with every Supabase request.
+ * Load FIRST in <head> (before supabase-js / any app script). Tokens come from the acx_login RPC. */
+(function (w) {
+  'use strict';
+  if (w.AcxSession) return;
+  var BASE = 'https://xglsampckermarjpczdf.supabase.co/rest/v1/';
+  var ANON = 'sb_publishable_x-dPR7pzhvJgag9soW0I8w_yfKTmi6A';
+  var KEY = 'acx_sessions', MAX = 8, rawFetch = w.fetch;
+
+  function list() { try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.filter(function (t) { return /^[0-9a-f]{64}$/.test(t); }) : []; } catch (e) { return []; } }
+  function save(a) { try { if (a.length) localStorage.setItem(KEY, JSON.stringify(a.slice(-MAX))); else localStorage.removeItem(KEY); } catch (e) {} }
+  function add(t) { if (!/^[0-9a-f]{64}$/.test(String(t || ''))) return; var a = list().filter(function (x) { return x !== t; }); a.push(t); save(a); }
+  function clear(logout) {
+    var a = list(); save([]);
+    if (logout && rawFetch) a.forEach(function (t) {
+      try { rawFetch.call(w, BASE + 'rpc/acx_logout', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_token: t }), keepalive: true }); } catch (e) {}
+    });
+  }
+
+  if (rawFetch) w.fetch = function (input, init) {
+    var inBase = false;
+    try {
+      var a = list();
+      var url = typeof input === 'string' ? input : (input && input.url) || String(input || '');
+      inBase = url.indexOf(BASE) === 0;
+      if (a.length && inBase) {
+        if (typeof Request !== 'undefined' && input instanceof Request) {
+          var h = new Headers(input.headers); h.set('x-acx-session', a.join(',')); input = new Request(input, { headers: h });
+        } else {
+          init = Object.assign({}, init); var hh = new Headers(init.headers || {}); hh.set('x-acx-session', a.join(',')); init.headers = hh;
+        }
+      }
+    } catch (e) {}
+    var pr = rawFetch.call(this, input, init);
+    if (inBase) pr = pr.then(function (res) {
+      /* the database refused the request because this browser has no valid session token: ask for the password once */
+      try { if (res && (res.status === 401 || res.status === 403)) res.clone().text().then(function (t) { if (/42501|Not signed in for this company/.test(t)) askLogin(); }).catch(function () {}); } catch (e) {}
+      return res;
+    });
+    return pr;
+  };
+
+  /* Ask the server to check a login. Returns {status:'ok'|'denied'|'missing'|'error', rows:[...]}; rows carry no password fields and one 'session' each.
+     Nothing is stored: the caller decides which row to accept and calls add(row.session). */
+  var recent = { k: '', t: 0 };
+  async function login(email, password, company) {
+    try {
+      var em = String(email || '').trim().toLowerCase();
+      var r = await rawFetch.call(w, BASE + 'rpc/acx_login', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_email: em, p_password: password, p_company: company || null }) });
+      if (r.status === 404) return { status: 'missing', rows: [] };
+      if (!r.ok) return { status: 'error', rows: [] };
+      var rows = await r.json(); rows = Array.isArray(rows) ? rows : [];
+      if (rows.length) recent = { k: em, t: Date.now() };
+      return { status: rows.length ? 'ok' : 'denied', rows: rows };
+    } catch (e) { return { status: 'network', rows: [] }; }
+  }
+
+  /* For apps whose own login runs in the browser (Books): after it succeeds, ask the server for a session. */
+  async function start(email, password, company) {
+    if (recent.k && recent.k === String(email || '').trim().toLowerCase() && Date.now() - recent.t < 60000) return true;   /* login() just did this */
+    try {
+      var r = await rawFetch.call(w, BASE + 'rpc/acx_login', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_email: String(email || '').trim().toLowerCase(), p_password: password, p_company: company || null }) });
+      if (!r.ok) return false;
+      var rows = await r.json(); if (!Array.isArray(rows) || !rows.length) return false;
+      rows.forEach(function (x) { if (x && x.session) add(x.session); });
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* Books: check the password on the server first. Only when acx_login is missing or unreachable does it use the old
+     'fallback' (which reads the account row). Returns the account data to merge into the local users list, or null. */
+  async function accountFirst(email, company, fallback) {
+    var pass = ''; try { pass = String((w.document.getElementById('loginPass') || {}).value || '').trim(); } catch (e) {}
+    if (!pass) return fallback();
+    var res = await login(email, pass, company);
+    if (res.status === 'missing' || res.status === 'network') return fallback();
+    if (res.status !== 'ok') return null;
+    var row = res.rows[0];
+    if (company && w.acxCompanyMatches) {
+      var m = res.rows.filter(function (x) { var d = Object.assign({}, x.data || {}); d.companyId = d.companyId || x.company_id; return w.acxCompanyMatches(d, company); })[0];
+      if (m) row = m;
+    }
+    var u = Object.assign({}, row.data || {}); u.companyId = u.companyId || row.company_id;
+    /* the server just confirmed this password, so keep a salted hash of it on this device for the app's own local check */
+    var sb = new Uint8Array(16); w.crypto.getRandomValues(sb);
+    var salt = Array.prototype.map.call(sb, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    var dig = await w.crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + pass));
+    u.passwordHash = Array.prototype.map.call(new Uint8Array(dig), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    u.passwordSalt = salt; delete u.password;
+    if (row.session) add(row.session);
+    return u;
+  }
+
+  /* Someone who signed in before sessions existed (or whose 30-day session ended) has no token. Ask for the password once, get one. */
+  var asking = false, lastAsk = 0;
+  function who() {
+    var ks = ['loggedInUser', 'acacia_session', 'pos_session'];
+    for (var i = 0; i < ks.length; i++) {
+      try { var u = JSON.parse(localStorage.getItem(ks[i]) || 'null'); var em = u && (u.email || u.login_id || u.username); var co = u && (u.companyId || u.company_id);
+        if (em && co) return { email: String(em), company: String(co) }; } catch (e) {}
+    }
+    return null;
+  }
+  function askLogin() {
+    var u = who();
+    if (asking || !u || !w.document || !w.document.body || Date.now() - lastAsk < 60000) return;
+    asking = true; lastAsk = Date.now();
+    var d = w.document, o = d.createElement('div');
+    o.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.55);display:grid;place-items:center;font-family:inherit';
+    o.innerHTML = '<div style="background:#fff;color:#111;border-radius:12px;padding:20px;width:min(380px,92vw);box-shadow:0 12px 40px #0006"><b style="font-size:16px">Confirm your password</b>' +
+      '<p style="font-size:13px;margin:8px 0">To keep your data syncing securely, enter the password for <b class="acxWho"></b>.</p>' +
+      '<input type="password" class="acxPw" autocomplete="current-password" style="width:100%;height:40px;padding:0 10px;border:1px solid #888;border-radius:8px;font:inherit;box-sizing:border-box;color:#111;background:#fff">' +
+      '<p class="acxErr" style="color:#c00;font-size:12px;min-height:16px;margin:6px 0"></p>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="acxLater" style="padding:8px 14px;border-radius:8px;border:1px solid #888;background:#fff;color:#111;cursor:pointer">Later</button>' +
+      '<button type="button" class="acxGo" style="padding:8px 14px;border-radius:8px;border:0;background:#1e3a8a;color:#fff;cursor:pointer">Continue</button></div></div>';
+    d.body.appendChild(o);
+    o.querySelector('.acxWho').textContent = u.email;
+    var pw = o.querySelector('.acxPw'), er = o.querySelector('.acxErr');
+    function close(later) { try { o.remove(); } catch (e) {} asking = false; if (later) lastAsk = Date.now() + 540000; }
+    async function go() {
+      if (!pw.value) return; er.textContent = 'Checking...';
+      var res = await login(u.email, pw.value, u.company);
+      if (res.status === 'ok') { res.rows.forEach(function (x) { if (x && x.session) add(x.session); }); close(false); }
+      else er.textContent = res.status === 'denied' ? 'That password is not correct.' : 'Could not reach the server. Try again.';
+    }
+    o.querySelector('.acxGo').onclick = go;
+    o.querySelector('.acxLater').onclick = function () { close(true); };
+    pw.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+    setTimeout(function () { try { pw.focus(); } catch (e) {} }, 50);
+  }
+
+  w.AcxSession = { add: add, list: list, clear: clear, start: start, login: login, accountFirst: accountFirst, ask: askLogin };
+})(window);
+
 /* Acacia Theme - one place for Light / Dark / System Default, same as Books.
  * The choice is picked in Settings > Appearance (card added by acacia-appearance.js) and is
  * remembered on this device in localStorage "acacia_theme_pref" ("light" | "dark" | "system").
