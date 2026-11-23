@@ -19,7 +19,7 @@ body #topbar,body .topbar,body #app>header,body #app>header.flex{background:var(
 body .searchbox,body .search-box,body .search-wrap{background:var(--ax-card)!important;border:1px solid var(--ax-line)!important;border-radius:10px!important}
 body .avatar,body .user-badge{background:var(--ax-g)!important;color:#fff!important;font-family:inherit!important}
 /* ---- page title + shared dashboard parts ---- */
-.adx-wrap{max-width:1320px;margin:0 auto}
+.adx-wrap{width:100%;max-width:none;min-width:0;margin:0;box-sizing:border-box}
 .adx-head{display:flex;align-items:center;gap:10px;margin:0 0 14px;flex-wrap:wrap}
 .adx-head h1{margin:0;font:700 26px/1.1 var(--ax-serif);color:var(--ax-ink)}
 .adx-head .adx-hi{color:var(--ax-g);width:26px;height:26px}
