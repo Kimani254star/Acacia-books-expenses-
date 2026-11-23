@@ -727,8 +727,15 @@ function renderDashboard(){
   const suppliers = (db.suppliers||[]).length;
   const byCat = {}; exps.forEach(e=>{const key=e.category||'Uncategorised';byCat[key]=(byCat[key]||0)+(Number(e.total)||0);});
   const topCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const ms = A.months(6), byM = {}; exps.forEach(e=>{const k=String(e.date||'').slice(0,7);byM[k]=(byM[k]||0)+(Number(e.total)||0);});
-  const purchaseTrend = ms.map(m=>({l:m.l,v:byM[m.k]||0}));
+  const ms = A.months(6), monthTotals = rows => { const totals={}; rows.forEach(r=>{const k=String(r.date||'').slice(0,7);if(k) totals[k]=(totals[k]||0)+(Number(r.amount!=null?r.amount:r.total)||0);}); return ms.map(m=>totals[m.k]||0); };
+  const billRecords = Array.isArray(db.bills)?db.bills:[];
+  const paidExpenseRows = db.expenses.filter(e=>e.paymentStatus==='Paid'||e.status==='Paid').map(e=>({...e,amount:e.total}));
+  const paidBillRows = billRecords.map(b=>({...b,amount:(Number(b.paidAmount)||0)*(Number(b.currencyRate)||1)})).filter(b=>b.amount>0);
+  const purchaseSeries = [
+    {label:'Expense Records',values:monthTotals(db.expenses)},
+    {label:'Supplier Bills',values:monthTotals(billRecords)},
+    {label:'Payments Made',values:monthTotals(paidExpenseRows.concat(paidBillRows))}
+  ];
   const recent = [...exps].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.expNo||'').localeCompare(String(a.expNo||''))).slice(0,6);
   const go = v => `document.querySelector('.nav-item[data-view=&quot;${v}&quot;]').click()`;
   const money = n => fmt(Number(n)||0);
@@ -757,7 +764,7 @@ function renderDashboard(){
     </div>
   </div>
   <div class="adx-grid" style="grid-template-columns:minmax(0,1fr)">
-    ${A.panel('Purchase Trends',purchaseTrend.some(t=>t.v)?A.line(purchaseTrend):'<div class="adx-empty">Purchases you record will draw the trend here.</div>',{i:'trend'})}
+    ${A.panel('Purchase Trends',purchaseSeries.some(row=>row.values.some(v=>v>0))?A.multiLine(ms.map(m=>m.l),purchaseSeries):'<div class="adx-empty">Expense records, supplier bills and payments will appear here as they are recorded.</div>',{i:'trend'})}
   </div>
   </div>`;
 }

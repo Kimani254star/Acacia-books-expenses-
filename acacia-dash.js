@@ -22,11 +22,34 @@ function line(d,o){o=o||{};var W=520,H=200,L=44,B=24,T=12,max=o.max||scale(Math.
 for(var i=0;i<=4;i++){var y=T+h-h*i/4;s+='<line class="gl" x1="'+L+'" x2="'+W+'" y1="'+y+'" y2="'+y+'"/><text x="'+(L-6)+'" y="'+(y+4)+'" text-anchor="end">'+(o.pct?Math.round(max*i/4)+'%':short(max*i/4))+'</text>'}
 if(pts.length){var p=pts.map(function(q){return q[0]+','+q[1]}).join(' ');s+='<polygon points="'+pts[0][0]+','+(T+h)+' '+p+' '+pts[pts.length-1][0]+','+(T+h)+'" fill="var(--ax-g)" opacity=".12"/><polyline points="'+p+'" fill="none" stroke="var(--ax-g)" stroke-width="2.2"/>';pts.forEach(function(q){s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="3.6" fill="var(--ax-card)" stroke="var(--ax-g)" stroke-width="2"/>'})}
 d.forEach(function(x,i){s+='<text x="'+pts[i][0]+'" y="'+(H-7)+'" text-anchor="middle">'+e(x.l)+'</text>'});return s+'</svg>'}
+function multiLine(labels,series){
+var W=760,H=220,L=148,B=28,T=14,h=H-B-T,colors=['var(--ax-g)','#3b82f6','#f59e0b','#8b5cf6','#ef4444'];
+var max=scale(Math.max.apply(null,series.reduce(function(a,x){return a.concat(x.values)},[1])));
+var st=(W-L-18)/Math.max(labels.length-1,1),s='<svg class="adx-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Monthly transaction trends">';
+function fullAmount(v){return 'KES '+Number(v||0).toLocaleString('en-KE',{maximumFractionDigits:2});}
+for(var i=0;i<=4;i++){
+var value=max*i/4,y=T+h-h*i/4;
+s+='<line class="gl" x1="'+L+'" x2="'+W+'" y1="'+y+'" y2="'+y+'"/><text x="'+(L-10)+'" y="'+(y+4)+'" text-anchor="end" style="font-size:10px">'+e(fullAmount(value))+'</text>';
+}
+series.forEach(function(row,j){
+var pts=row.values.map(function(v,i){return [L+9+st*i,T+h-(Number(v)||0)/max*h]});
+if(!pts.length)return;
+var color=row.color||colors[j%colors.length],p=pts.map(function(q){return q[0]+','+q[1]}).join(',');
+s+='<polyline points="'+p+'" fill="none" stroke="'+color+'" stroke-width="2.2" stroke-linejoin="round"/>';
+pts.forEach(function(q,i){
+var amount=Number(row.values[i])||0;
+s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="3.4" fill="var(--ax-card)" stroke="'+color+'" stroke-width="2"><title>'+e(row.label)+' · '+e(labels[i])+' · '+e(fullAmount(amount))+'</title></circle>';
+});
+});
+labels.forEach(function(label,i){s+='<text x="'+(L+9+st*i)+'" y="'+(H-8)+'" text-anchor="middle">'+e(label)+'</text>'});
+s+='</svg><div class="adx-leg">'+series.map(function(row,j){return '<span><i style="background:'+(row.color||colors[j%colors.length])+'"></i>'+e(row.label)+'</span>'}).join('')+'</div>';
+return s;
+}
 function hb(l,p,right,c){p=Math.max(0,Math.min(100,Number(p)||0));return '<div class="adx-hb"><div><span>'+e(l)+'</span><b>'+(right==null?Math.round(p)+'%':e(right))+'</b></div><div class="tk"><i style="width:'+p+'%'+(c?';background:'+c:'')+'"></i></div></div>'}
 function leg(a){return '<div class="adx-leg">'+a.map(function(x){return '<span><i style="background:'+x[1]+'"></i>'+e(x[0])+'</span>'}).join('')+'</div>'}
 function pill(t,k){return '<span class="adx-pill '+(k||'')+'">'+e(t)+'</span>'}
 function months(n){var o=[],d=new Date();for(var i=n-1;i>=0;i--){var m=new Date(d.getFullYear(),d.getMonth()-i,1);o.push({k:m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0'),l:m.toLocaleString('en',{month:'short'})})}return o}
 function tagline(){var t=w.ADX_TAGLINE;if(!t)return;var tb=document.querySelector('#topbar,.topbar,#app>header');if(!tb||tb.querySelector('.adx-tag'))return;var d=document.createElement('div');d.className='adx-tag';d.textContent=t;tb.insertBefore(d,tb.firstChild)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',tagline);else tagline();
-w.ADX={e:e,ic:ic,short:short,delta:delta,kpi:kpi,panel:panel,head:head,row:row,donut:donut,bars:bars,line:line,hb:hb,leg:leg,pill:pill,months:months,C:{g:'#1f8a2e',b:'#3b82f6',o:'#f59e0b',p:'#8b5cf6',r:'#ef4444',gl:'#9bd3a3'}};
+w.ADX={e:e,ic:ic,short:short,delta:delta,kpi:kpi,panel:panel,head:head,row:row,donut:donut,bars:bars,line:line,multiLine:multiLine,hb:hb,leg:leg,pill:pill,months:months,C:{g:'#1f8a2e',b:'#3b82f6',o:'#f59e0b',p:'#8b5cf6',r:'#ef4444',gl:'#9bd3a3'}};
 })(window);
