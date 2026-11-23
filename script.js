@@ -512,7 +512,7 @@ function loadDB(companyId){
 function saveDB(){ if(!CURRENT_USER) return; localStorage.setItem(dataKeyFor(CURRENT_USER.companyId), JSON.stringify(db)); }
 
 /* ---------------------------- Auth ---------------------------- */
-let db = null;
+var db = null;
 let CURRENT_USER = null;
 let currentDetailId = null;
 let editingId = null;
@@ -707,67 +707,42 @@ function costRows(){
 }
 
 function renderDashboard(){
-  const now = new Date();
-  document.getElementById('dashDateLine').textContent = now.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
-
-  const exps = costRows();
+  const A = ADX, C = A.C, K = n => 'KES ' + A.short(n);
+  const host = document.getElementById('adxDash'); if(!host) return;
+  const exps = costRows(), now = new Date();
   const total = exps.reduce((s,e)=>s+e.total,0);
   const monthKey = now.toISOString().slice(0,7);
   const thisMonth = exps.filter(e=>e.date.slice(0,7)===monthKey).reduce((s,e)=>s+e.total,0);
-  const pending = exps.filter(e=>e.status==='Pending Approval').length;
-  const approved = exps.filter(e=>e.status==='Approved').length;
+  const pend = exps.filter(e=>e.status==='Pending Approval'), appr = exps.filter(e=>e.status==='Approved');
+  const sum = l => l.reduce((s,e)=>s+e.total,0);
   const paid = exps.filter(e=>e.status==='Paid').reduce((s,e)=>s+e.total,0);
   const outstanding = exps.filter(e=>e.paymentStatus==='Unpaid').reduce((s,e)=>s+e.total,0);
-  const vat = exps.reduce((s,e)=>s+e.taxAmount,0);
-  const operating = exps.reduce((s,e)=>s+e.amount,0);
-
-  document.getElementById('statTotal').textContent = fmt(total);
-  document.getElementById('statMonth').textContent = fmt(thisMonth);
-  document.getElementById('statPending').textContent = pending;
-  document.getElementById('statPaid').textContent = fmt(paid);
-  document.getElementById('statOutstanding').textContent = fmt(outstanding);
-  document.getElementById('statVat').textContent = fmt(vat);
-  document.getElementById('statOperating').textContent = fmt(operating);
-  document.getElementById('statApproved').textContent = approved;
-
-  // category bars
-  const catHost = document.getElementById('catBars');
-  if(exps.length===0){
-    catHost.innerHTML = `<div class="empty-state" style="padding:22px;"><div class="hint">No expenses recorded yet — categories will appear here once you add one.</div></div>`;
-  } else {
-    const byCat = {};
-    exps.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.total; });
-    const max = Math.max(...Object.values(byCat));
-    catHost.innerHTML = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`
-      <div class="bar-row">
-        <div class="name">${cat}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${(amt/max*100).toFixed(0)}%"></div></div>
-        <div class="amt">${fmt(amt)}</div>
-      </div>`).join('');
-  }
-
-  // recent list
-  const recentHost = document.getElementById('recentList');
-  if(exps.length===0){
-    recentHost.innerHTML = `<div class="empty-state" style="padding:22px;">
-        <div class="title">No expenses yet</div>
-        <div class="hint">Record your first expense to start seeing activity here.</div>
-        <button class="btn btn-primary btn-sm" onclick="openNewExpense()">＋ New Expense</button>
-      </div>`;
-  } else {
-    const recent = [...exps].sort((a,b)=> b.date.localeCompare(a.date) || b.expNo.localeCompare(a.expNo)).slice(0,6);
-    recentHost.innerHTML = recent.map(e=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px;">
-        <div>
-          <div style="font-weight:600;">${escapeHtml(e.description)}</div>
-          <div style="font-size:11.5px;color:var(--ink-soft);">${fmtDate(e.date)} · ${e.category}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-variant-numeric:tabular-nums;">${fmt(e.total)}</div>
-          <span class="status-pill ${statusClass(e.status)}" style="font-size:10px;">${e.status}</span>
-        </div>
-      </div>`).join('');
-  }
+  const vat = exps.reduce((s,e)=>s+e.taxAmount,0), operating = exps.reduce((s,e)=>s+e.amount,0);
+  const byCat = {}; exps.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + e.total; });
+  const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]), palette = [C.g, C.b, C.o, C.p, C.r, C.gl];
+  const top = cats.slice(0,4), rest = cats.slice(4).reduce((s,c)=>s+c[1],0);
+  const segs = top.map((c,i)=>({v:c[1], c:palette[i], l:c[0], t:total?Math.round(c[1]/total*100)+'%':'0%'})); if(rest) segs.push({v:rest, c:palette[4], l:'Others', t:Math.round(rest/total*100)+'%'});
+  const ms = A.months(6), byM = {}; exps.forEach(e=>{ const k=e.date.slice(0,7); byM[k]=(byM[k]||0)+e.total; });
+  const recent = [...exps].sort((a,b)=> b.date.localeCompare(a.date) || b.expNo.localeCompare(a.expNo)).slice(0,5);
+  const go = v => `document.querySelector('.nav-item[data-view=&quot;${v}&quot;]').click()`;
+  host.innerHTML = `<div class="adx-wrap">
+  ${A.head('wallet','Expenses Dashboard', now.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long', year:'numeric'}), `<button class="adx-btn" onclick="document.getElementById('csvImport').click()">Import CSV</button><button class="adx-btn pri" onclick="openNewExpense()">+ New Expense</button>`)}
+  <div class="adx-grid adx-g4">
+    ${A.kpi({i:'wallet',l:'Total Expenses',v:K(total),d:`<div class="adx-d fl">${exps.length} records</div>`})}
+    ${A.kpi({i:'check',c:'b',l:'Approved',v:appr.length,d:`<div class="adx-d fl">${K(sum(appr))}</div>`})}
+    ${A.kpi({i:'clock',c:'o',l:'Pending Approval',v:pend.length,d:`<div class="adx-d fl">${K(sum(pend))}</div>`})}
+    ${A.kpi({i:'file',c:'p',l:'Outstanding',v:K(outstanding),d:`<div class="adx-d fl">${K(paid)} paid</div>`})}
+  </div>
+  <div class="adx-grid adx-g2">
+    ${A.panel('By Category', exps.length ? A.donut(segs, K(total), 'Total') : '<div class="adx-empty">No expenses recorded yet — categories appear once you add one.</div>', {i:'chart', link:['Categories', go('categories')]})}
+    ${A.panel('Monthly Expenses', exps.length ? A.bars(ms.map(m=>({l:m.l, v:[byM[m.k]||0]})), [C.g]) : '<div class="adx-empty">Monthly totals will draw here.</div>', {i:'trend'})}
+  </div>
+  <div class="adx-grid adx-g21">
+    ${A.panel('Recent Expenses', recent.length ? recent.map(e=>A.row('', `<b>${escapeHtml(e.description)}</b><div style="font-size:11.5px;color:var(--ax-mut)">${fmtDate(e.date)} · ${escapeHtml(e.category)}</div>`, `${fmt(e.total)}<div>${A.pill(e.status, e.status==='Paid'||e.status==='Approved'?'':'o')}</div>`)).join('') : `<div class="adx-empty">No expenses yet. <button class="adx-btn pri" onclick="openNewExpense()">+ New Expense</button></div>`, {i:'clock', link:['View all', go('expenses')]})}
+    ${A.panel('Cost Summary', A.row('', 'This month', K(thisMonth)) + A.row('', 'Operating costs', K(operating)) + A.row('', 'VAT / input tax', K(vat)) + A.row('', 'Paid', K(paid)), {i:'tag'})}
+  </div>
+  <div class="adx-banner"><b>Control costs</b><span>${pend.length ? pend.length+' expense'+(pend.length>1?'s are':' is')+' waiting for approval.' : 'Nothing is waiting for approval.'}</span><button class="adx-btn pri" onclick="${go('expenses')}">Review expenses</button></div>
+  </div>`;
 }
 
 /* ================= EXPENSES TABLE ================= */

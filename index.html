@@ -16,7 +16,7 @@ window.addEventListener('appinstalled',hide)})();</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 <script>window.ACACIA_APPEARANCE={sidebar:'.sidebar',items:'.sidebar .nav-item'};</script>
 <script src="acacia-appearance.js"></script>
-<style>#homePage>:not(#acxLanding){display:none!important}#acxLanding{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483000;background:#fff}</style><link rel="stylesheet" href="acacia-dash.css"></head>
+<style>#homePage>:not(#acxLanding){display:none!important}#acxLanding{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483000;background:#fff}</style><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap"><script>window.ADX_TAGLINE='Track Spending. Control Costs.';</script><link rel="stylesheet" href="acacia-dash.css"><script src="acacia-dash.js"></script></head>
 <body>
 <!-- ============ PUBLIC HOME PAGE ============ -->
 <div id="homePage"><iframe id="acxLanding" src="https://acacia-books.vercel.app/landing.html?app=expenses" title="Acacia Enterprise"></iframe><script>window.__SUPA_URL__=window.__SUPA_URL__||"https://xglsampckermarjpczdf.supabase.co";window.__SUPA_KEY__=window.__SUPA_KEY__||"sb_publishable_x-dPR7pzhvJgag9soW0I8w_yfKTmi6A";window.openLogin=function(){hpShowLogin("login")};window.acaciaHideLanding=window.openLogin;window.showRegisterForm=function(){hpShowLogin("register")};window.choosePlan=function(){window.showRegisterForm()};window.addEventListener("message",function(e){if(e.origin!=="https://acacia-books.vercel.app"&&e.origin!==location.origin)return;var m=e.data&&e.data.acx;if(m==="login")window.openLogin();if(m==="register")window.showRegisterForm()});</script>
@@ -418,39 +418,7 @@ window.addEventListener('appinstalled',hide)})();</script>
     </div>
 
     <!-- DASHBOARD -->
-    <div class="view active" id="view-dashboard">
-      <div class="view-header">
-        <div>
-          <div class="view-title">Dashboard</div>
-          <div class="view-sub" id="dashDateLine"></div>
-        </div>
-        <div class="toolbar">
-          <button class="btn" onclick="document.getElementById('csvImport').click()">Import CSV</button><input type="file" id="csvImport" accept=".csv" class="hidden" style="display:none" onchange="importCostsCSV(event)"><button class="btn" onclick="openBulkCosts()">Bulk Entry</button><button class="btn btn-primary" onclick="openNewExpense()">＋ Log Cost</button>
-        </div>
-      </div>
-
-      <div class="card-grid">
-        <div class="stat-card"><div class="stat-label">Total Expenses</div><div class="stat-value" id="statTotal">KES 0</div></div>
-        <div class="stat-card" id="statMonthCard"><div class="stat-label" id="statMonthLabel">This Month</div><div class="stat-value" id="statMonth">KES 0</div></div>
-        <div class="stat-card pending"><div class="stat-label">Pending Approval</div><div class="stat-value" id="statPending">0</div></div>
-        <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value" id="statPaid">KES 0</div></div>
-        <div class="stat-card rust"><div class="stat-label">Outstanding</div><div class="stat-value" id="statOutstanding">KES 0</div></div>
-        <div class="stat-card muted"><div class="stat-label">VAT / Input Tax</div><div class="stat-value" id="statVat">KES 0</div></div>
-        <div class="stat-card"><div class="stat-label">Operating Costs</div><div class="stat-value" id="statOperating">KES 0</div></div>
-        <div class="stat-card muted"><div class="stat-label">Approved</div><div class="stat-value" id="statApproved">0</div></div>
-      </div>
-
-      <div class="dash-row">
-        <div class="panel-box">
-          <h3>Expense by Category</h3>
-          <div id="catBars"></div>
-        </div>
-        <div class="panel-box">
-          <h3>Recent Expenses</h3>
-          <div id="recentList"></div>
-        </div>
-      </div>
-    </div>
+    <div class="view active" id="view-dashboard"><input type="file" id="csvImport" accept=".csv" style="display:none" onchange="importCostsCSV(event)"><div id="adxDash"></div></div>
 
     <!-- EXPENSES -->
     <div class="view" id="view-expenses">
@@ -732,12 +700,12 @@ window.addEventListener('appinstalled',hide)})();</script>
 <script src="acacia-actions.js"></script>
 <script src="script.js"></script>
 <script src="acacia-bills.js"></script>
+<script src="acacia-expansion.js"></script>
 <script src="acacia-grn.js"></script>
 <script src="acacia-bridge.js"></script>
 <script src="acacia-help.js"></script>
 <script src="acacia-sidebar.js"></script>
 <script src="acacia-brand.js"></script>
 <script src="acacia-signout.js"></script>
-<script src="acacia-dash.js"></script><script src="acacia-dash-expenses.js"></script>
 </body>
 </html>
